@@ -1,0 +1,42 @@
+
+services:
+  tracking-rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: tracking-rabbitmq-broker
+    hostname: tracking-rabbitmq
+    ports:
+      - "${RABBITMQ_AMQP_PORT:-5672}:5672"       
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"  
+      - "${RABBITMQ_MQTT_PORT:-1883}:1883"    
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-admin123}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-/}
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit log_levels [{connection,${RABBITMQ_LOG_LEVEL:-info}},{default,${RABBITMQ_LOG_LEVEL:-info}}] disk_free_limit 2147483648
+    env_file:
+      - .env
+    volumes:
+      - tracking_rabbitmq_data:/var/lib/rabbitmq
+      - tracking_rabbitmq_logs:/var/log/rabbitmq
+      - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./config/definitions.json:/etc/rabbitmq/definitions.json:ro
+    networks:
+      - tracking-network
+    restart: unless-stopped
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  tracking_rabbitmq_data:
+    driver: local
+  tracking_rabbitmq_logs:
+    driver: local
+
+networks:
+  tracking-network:
+    driver: bridge
+    name: tracking-network

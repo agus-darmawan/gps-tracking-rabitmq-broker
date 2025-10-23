@@ -1,0 +1,264 @@
+{
+  "rabbit_version": "3.12.0",
+  "rabbitmq_version": "3.12.0",
+  "users": [
+    {
+      "name": "tracking_admin",
+      "password_hash": "JBvKjDR5VgQZzNLfJ8ZYGaLzKRY3DZHQ8FcWUNtLq5v8xD+d",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "administrator"
+    },
+    {
+      "name": "gps_device",
+      "password_hash": "kKHJEPPIl+PqPXVxYPDcIQBGgMY0BvLXCVHXYiJe0GUbwQZl",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ""
+    },
+    {
+      "name": "backend_consumer",
+      "password_hash": "mMNOPQRSl+TuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZa",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ""
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "tracking_admin",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "gps_device",
+      "vhost": "/",
+      "configure": "",
+      "write": "gps.tracking.*",
+      "read": ""
+    },
+    {
+      "user": "backend_consumer",
+      "vhost": "/",
+      "configure": "",
+      "write": "",
+      "read": "gps.tracking.*"
+    }
+  ],
+  "topic_permissions": [],
+  "parameters": [],
+  "global_parameters": [
+    {
+      "name": "cluster_name",
+      "value": "tracking-cluster"
+    }
+  ],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "tracking-ha-policy",
+      "pattern": "gps.tracking.*",
+      "apply-to": "queues",
+      "definition": {
+        "ha-mode": "exactly",
+        "ha-params": 2,
+        "ha-sync-mode": "automatic",
+        "message-ttl": 86400000,
+        "max-length": 100000,
+        "overflow": "reject-publish"
+      },
+      "priority": 1
+    },
+    {
+      "vhost": "/",
+      "name": "dlq-policy",
+      "pattern": ".*",
+      "apply-to": "queues",
+      "definition": {
+        "dead-letter-exchange": "gps.tracking.dlx",
+        "dead-letter-routing-key": "failed"
+      },
+      "priority": 0
+    }
+  ],
+  "queues": [
+    {
+      "name": "gps.tracking.location.raw",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-length": 100000,
+        "x-queue-type": "classic",
+        "x-dead-letter-exchange": "gps.tracking.dlx"
+      }
+    },
+    {
+      "name": "gps.tracking.location.processed",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 172800000,
+        "x-max-length": 50000,
+        "x-dead-letter-exchange": "gps.tracking.dlx"
+      }
+    },
+    {
+      "name": "gps.tracking.geofence.alert",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 604800000,
+        "x-max-length": 10000,
+        "x-dead-letter-exchange": "gps.tracking.dlx"
+      }
+    },
+    {
+      "name": "gps.tracking.speed.alert",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 604800000,
+        "x-max-length": 10000,
+        "x-dead-letter-exchange": "gps.tracking.dlx"
+      }
+    },
+    {
+      "name": "gps.tracking.device.status",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-length": 50000,
+        "x-dead-letter-exchange": "gps.tracking.dlx"
+      }
+    },
+    {
+      "name": "gps.tracking.trip.start",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 604800000,
+        "x-max-length": 20000,
+        "x-dead-letter-exchange": "gps.tracking.dlx"
+      }
+    },
+    {
+      "name": "gps.tracking.trip.end",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 604800000,
+        "x-max-length": 20000,
+        "x-dead-letter-exchange": "gps.tracking.dlx"
+      }
+    },
+    {
+      "name": "gps.tracking.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 2592000000,
+        "x-max-length": 50000
+      }
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "gps.tracking.exchange",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "gps.tracking.dlx",
+      "vhost": "/",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "gps.tracking.exchange",
+      "vhost": "/",
+      "destination": "gps.tracking.location.raw",
+      "destination_type": "queue",
+      "routing_key": "location.raw.#",
+      "arguments": {}
+    },
+    {
+      "source": "gps.tracking.exchange",
+      "vhost": "/",
+      "destination": "gps.tracking.location.processed",
+      "destination_type": "queue",
+      "routing_key": "location.processed.#",
+      "arguments": {}
+    },
+    {
+      "source": "gps.tracking.exchange",
+      "vhost": "/",
+      "destination": "gps.tracking.geofence.alert",
+      "destination_type": "queue",
+      "routing_key": "alert.geofence.#",
+      "arguments": {}
+    },
+    {
+      "source": "gps.tracking.exchange",
+      "vhost": "/",
+      "destination": "gps.tracking.speed.alert",
+      "destination_type": "queue",
+      "routing_key": "alert.speed.#",
+      "arguments": {}
+    },
+    {
+      "source": "gps.tracking.exchange",
+      "vhost": "/",
+      "destination": "gps.tracking.device.status",
+      "destination_type": "queue",
+      "routing_key": "device.status.#",
+      "arguments": {}
+    },
+    {
+      "source": "gps.tracking.exchange",
+      "vhost": "/",
+      "destination": "gps.tracking.trip.start",
+      "destination_type": "queue",
+      "routing_key": "trip.start.#",
+      "arguments": {}
+    },
+    {
+      "source": "gps.tracking.exchange",
+      "vhost": "/",
+      "destination": "gps.tracking.trip.end",
+      "destination_type": "queue",
+      "routing_key": "trip.end.#",
+      "arguments": {}
+    },
+    {
+      "source": "gps.tracking.dlx",
+      "vhost": "/",
+      "destination": "gps.tracking.dlq",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    }
+  ]
+}
