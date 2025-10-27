@@ -73,8 +73,6 @@ start_broker() {
         echo ""
         echo "Ports:"
         echo "  - AMQP: $(grep RABBITMQ_AMQP_PORT .env | cut -d '=' -f2)"
-        echo "  - Management: ${RABBITMQ_PORT}"
-        echo "  - MQTT: $(grep RABBITMQ_MQTT_PORT .env | cut -d '=' -f2)"
         echo ""
         echo "Pre-configured Queues:"
         echo "  - gps.tracking.location.raw"

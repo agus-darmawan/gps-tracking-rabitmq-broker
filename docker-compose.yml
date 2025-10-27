@@ -1,4 +1,3 @@
-
 services:
   tracking-rabbitmq:
     image: rabbitmq:3.12-management-alpine

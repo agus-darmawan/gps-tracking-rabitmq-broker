@@ -110,28 +110,6 @@
       }
     },
     {
-      "name": "gps.tracking.geofence.alert",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-message-ttl": 604800000,
-        "x-max-length": 10000,
-        "x-dead-letter-exchange": "gps.tracking.dlx"
-      }
-    },
-    {
-      "name": "gps.tracking.speed.alert",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-message-ttl": 604800000,
-        "x-max-length": 10000,
-        "x-dead-letter-exchange": "gps.tracking.dlx"
-      }
-    },
-    {
       "name": "gps.tracking.device.status",
       "vhost": "/",
       "durable": true,
@@ -210,22 +188,6 @@
       "destination": "gps.tracking.location.processed",
       "destination_type": "queue",
       "routing_key": "location.processed.#",
-      "arguments": {}
-    },
-    {
-      "source": "gps.tracking.exchange",
-      "vhost": "/",
-      "destination": "gps.tracking.geofence.alert",
-      "destination_type": "queue",
-      "routing_key": "alert.geofence.#",
-      "arguments": {}
-    },
-    {
-      "source": "gps.tracking.exchange",
-      "vhost": "/",
-      "destination": "gps.tracking.speed.alert",
-      "destination_type": "queue",
-      "routing_key": "alert.speed.#",
       "arguments": {}
     },
     {
