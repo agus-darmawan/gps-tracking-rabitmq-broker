@@ -1,67 +1,26 @@
 {
   "rabbit_version": "3.12.0",
   "rabbitmq_version": "3.12.0",
-  "users": [
-    {
-      "name": "tracking_admin",
-      "password_hash": "JBvKjDR5VgQZzNLfJ8ZYGaLzKRY3DZHQ8FcWUNtLq5v8xD+d",
-      "hashing_algorithm": "rabbit_password_hashing_sha256",
-      "tags": "administrator"
-    },
-    {
-      "name": "gps_device",
-      "password_hash": "kKHJEPPIl+PqPXVxYPDcIQBGgMY0BvLXCVHXYiJe0GUbwQZl",
-      "hashing_algorithm": "rabbit_password_hashing_sha256",
-      "tags": ""
-    },
-    {
-      "name": "backend_consumer",
-      "password_hash": "mMNOPQRSl+TuVwXyZaBcDeFgHiJkLmNoPqRsTuVwXyZa",
-      "hashing_algorithm": "rabbit_password_hashing_sha256",
-      "tags": ""
-    }
-  ],
+  "users": [],
   "vhosts": [
     {
       "name": "/"
     }
   ],
-  "permissions": [
-    {
-      "user": "tracking_admin",
-      "vhost": "/",
-      "configure": ".*",
-      "write": ".*",
-      "read": ".*"
-    },
-    {
-      "user": "gps_device",
-      "vhost": "/",
-      "configure": "",
-      "write": "gps.tracking.*",
-      "read": ""
-    },
-    {
-      "user": "backend_consumer",
-      "vhost": "/",
-      "configure": "",
-      "write": "",
-      "read": "gps.tracking.*"
-    }
-  ],
+  "permissions": [],
   "topic_permissions": [],
   "parameters": [],
   "global_parameters": [
     {
       "name": "cluster_name",
-      "value": "tracking-cluster"
+      "value": "rental-cluster"
     }
   ],
   "policies": [
     {
       "vhost": "/",
-      "name": "tracking-ha-policy",
-      "pattern": "gps.tracking.*",
+      "name": "vehicle-ha-policy",
+      "pattern": "vehicle.*",
       "apply-to": "queues",
       "definition": {
         "ha-mode": "exactly",
@@ -79,7 +38,7 @@
       "pattern": ".*",
       "apply-to": "queues",
       "definition": {
-        "dead-letter-exchange": "gps.tracking.dlx",
+        "dead-letter-exchange": "vehicle.dlx",
         "dead-letter-routing-key": "failed"
       },
       "priority": 0
@@ -87,63 +46,96 @@
   ],
   "queues": [
     {
-      "name": "gps.tracking.location.raw",
+      "name": "vehicle.control.start_rent",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
       "arguments": {
-        "x-message-ttl": 86400000,
-        "x-max-length": 100000,
+        "x-message-ttl": 3600000,
+        "x-max-length": 10000,
         "x-queue-type": "classic",
-        "x-dead-letter-exchange": "gps.tracking.dlx"
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
-      "name": "gps.tracking.location.processed",
+      "name": "vehicle.control.end_rent",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
       "arguments": {
-        "x-message-ttl": 172800000,
-        "x-max-length": 50000,
-        "x-dead-letter-exchange": "gps.tracking.dlx"
+        "x-message-ttl": 3600000,
+        "x-max-length": 10000,
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
-      "name": "gps.tracking.device.status",
+      "name": "vehicle.control.kill_vehicle",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
       "arguments": {
-        "x-message-ttl": 86400000,
-        "x-max-length": 50000,
-        "x-dead-letter-exchange": "gps.tracking.dlx"
+        "x-message-ttl": 3600000,
+        "x-max-length": 5000,
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
-      "name": "gps.tracking.trip.start",
+      "name": "vehicle.realtime.location",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-length": 200000,
+        "x-dead-letter-exchange": "vehicle.dlx"
+      }
+    },
+    {
+      "name": "vehicle.realtime.status",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-length": 50000,
+        "x-dead-letter-exchange": "vehicle.dlx"
+      }
+    },
+    {
+      "name": "vehicle.realtime.battery",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-length": 50000,
+        "x-dead-letter-exchange": "vehicle.dlx"
+      }
+    },
+    {
+      "name": "vehicle.report.maintenance",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
       "arguments": {
         "x-message-ttl": 604800000,
         "x-max-length": 20000,
-        "x-dead-letter-exchange": "gps.tracking.dlx"
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
-      "name": "gps.tracking.trip.end",
+      "name": "vehicle.report.performance",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
       "arguments": {
         "x-message-ttl": 604800000,
         "x-max-length": 20000,
-        "x-dead-letter-exchange": "gps.tracking.dlx"
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
-      "name": "gps.tracking.dlq",
+      "name": "vehicle.dlq",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
@@ -155,7 +147,7 @@
   ],
   "exchanges": [
     {
-      "name": "gps.tracking.exchange",
+      "name": "vehicle.exchange",
       "vhost": "/",
       "type": "topic",
       "durable": true,
@@ -164,7 +156,7 @@
       "arguments": {}
     },
     {
-      "name": "gps.tracking.dlx",
+      "name": "vehicle.dlx",
       "vhost": "/",
       "type": "fanout",
       "durable": true,
@@ -175,49 +167,73 @@
   ],
   "bindings": [
     {
-      "source": "gps.tracking.exchange",
+      "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "gps.tracking.location.raw",
+      "destination": "vehicle.control.start_rent",
       "destination_type": "queue",
-      "routing_key": "location.raw.#",
+      "routing_key": "control.start_rent.#",
       "arguments": {}
     },
     {
-      "source": "gps.tracking.exchange",
+      "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "gps.tracking.location.processed",
+      "destination": "vehicle.control.end_rent",
       "destination_type": "queue",
-      "routing_key": "location.processed.#",
+      "routing_key": "control.end_rent.#",
       "arguments": {}
     },
     {
-      "source": "gps.tracking.exchange",
+      "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "gps.tracking.device.status",
+      "destination": "vehicle.control.kill_vehicle",
       "destination_type": "queue",
-      "routing_key": "device.status.#",
+      "routing_key": "control.kill_vehicle.#",
       "arguments": {}
     },
     {
-      "source": "gps.tracking.exchange",
+      "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "gps.tracking.trip.start",
+      "destination": "vehicle.realtime.location",
       "destination_type": "queue",
-      "routing_key": "trip.start.#",
+      "routing_key": "realtime.location.#",
       "arguments": {}
     },
     {
-      "source": "gps.tracking.exchange",
+      "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "gps.tracking.trip.end",
+      "destination": "vehicle.realtime.status",
       "destination_type": "queue",
-      "routing_key": "trip.end.#",
+      "routing_key": "realtime.status.#",
       "arguments": {}
     },
     {
-      "source": "gps.tracking.dlx",
+      "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "gps.tracking.dlq",
+      "destination": "vehicle.realtime.battery",
+      "destination_type": "queue",
+      "routing_key": "realtime.battery.#",
+      "arguments": {}
+    },
+    {
+      "source": "vehicle.exchange",
+      "vhost": "/",
+      "destination": "vehicle.report.maintenance",
+      "destination_type": "queue",
+      "routing_key": "report.maintenance.#",
+      "arguments": {}
+    },
+    {
+      "source": "vehicle.exchange",
+      "vhost": "/",
+      "destination": "vehicle.report.performance",
+      "destination_type": "queue",
+      "routing_key": "report.performance.#",
+      "arguments": {}
+    },
+    {
+      "source": "vehicle.dlx",
+      "vhost": "/",
+      "destination": "vehicle.dlq",
       "destination_type": "queue",
       "routing_key": "",
       "arguments": {}

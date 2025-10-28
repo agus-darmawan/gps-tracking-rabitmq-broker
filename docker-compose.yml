@@ -17,7 +17,6 @@ services:
     volumes:
       - tracking_rabbitmq_data:/var/lib/rabbitmq
       - tracking_rabbitmq_logs:/var/log/rabbitmq
-      - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./config/definitions.json:/etc/rabbitmq/definitions.json:ro
     networks:
       - tracking-network
