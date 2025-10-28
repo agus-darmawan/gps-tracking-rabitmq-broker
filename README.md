@@ -1,314 +1,264 @@
 # Vehicle Rental RabbitMQ Broker
 
-RabbitMQ message broker for vehicle rental system to communicate between backend servers and GPS devices. Designed for high-throughput vehicle tracking and control data processing.
+A high-performance RabbitMQ message broker for vehicle rental systems, enabling real-time communication between backend servers and GPS tracking devices. Designed for scalable vehicle tracking, control commands, and maintenance reporting.
 
-## 📁 Project Structure
+## 🏗️ Project Structure
 
 ```
-rental-rabbitmq-broker/
+vehicle-rental-rabbitmq/
 ├── docker-compose.yml           # Docker Compose configuration
 ├── .env.example                 # Environment template
-├── .gitignore                   # Git ignore rules
 ├── setup.sh                     # Management script
 ├── config/
 │   ├── rabbitmq.conf           # RabbitMQ configuration
 │   └── definitions.json        # Pre-configured queues & exchanges
 ├── examples/
-│   ├── backend-consumer.js     # Backend data consumer
+│   ├── backend-consumer.ts     # TypeScript backend consumer
+│   ├── vehicle-publisher.ts    # Vehicle data publisher example
 │   └── package.json            # Node.js dependencies
-└── README.md                    # This file
+├── .github/
+│   └── workflows/
+│       └── deploy.yml          # CI/CD pipeline
+├── scripts/
+│   ├── health-check.sh         # Health monitoring
+│   └── backup.sh               # Backup utilities
+└── README.md                   # This file
 ```
 
 ## 🚀 Quick Start
 
-### 1. Start the Broker
+### 1. Environment Setup
 
 ```bash
-# Using setup script (recommended)
+# Clone and setup
+git clone <your-repo>
+cd vehicle-rental-rabbitmq
+
+# Copy environment template
+cp .env.example .env
+
+# Edit configuration
+nano .env
+```
+
+### 2. Start the Broker
+
+```bash
+# Make script executable
 chmod +x setup.sh
+
+# Start broker
 ./setup.sh start
 
-# Or manually
+# Or using Docker directly
 docker-compose up -d
 ```
 
-### 2. Access Management UI
+### 3. Access Management Interface
 
-Open http://localhost:15672
+Open [http://localhost:15672](http://localhost:15672)
 
 **Default credentials:**
 - Username: `admin`
-- Password: `@dmin2510`
+- Password: `admin123`
 
-### 3. Run Backend Examples
+### 4. Run Examples
 
 ```bash
-# Install dependencies
 cd examples
 npm install
 
-# Backend Consumer (receive device data)
-node backend-consumer.js
+# Backend consumer
+npm run dev:consumer
+
+# Vehicle data publisher
+npm run dev:publisher
 ```
 
 ## 🔧 Configuration
 
-Edit `.env` file:
+### Environment Variables (.env)
 
 ```bash
+# RabbitMQ Authentication
 RABBITMQ_DEFAULT_USER=admin
-RABBITMQ_DEFAULT_PASS=@dmin2510
+RABBITMQ_DEFAULT_PASS=admin123
+RABBITMQ_DEFAULT_VHOST=/
+
+# Port Configuration
 RABBITMQ_AMQP_PORT=5672
 RABBITMQ_MANAGEMENT_PORT=15672
 RABBITMQ_MQTT_PORT=1883
+
+# Performance & Logging
+RABBITMQ_LOG_LEVEL=info
+RABBITMQ_MEMORY_LIMIT=0.6
 ```
 
-## 📦 Pre-configured Queues
+## 📦 Message Queues & Routing
 
-### Control Messages (Backend → Device)
-- `vehicle.control.start_rent` - Start rental command with vehicle ID
-- `vehicle.control.end_rent` - End rental command with vehicle ID  
-- `vehicle.control.kill_vehicle` - Kill/disable vehicle command with vehicle ID
+### Control Commands (Backend → Vehicle)
+| Queue | Purpose | Routing Key Pattern |
+|-------|---------|-------------------|
+| `vehicle.control.start_rental` | Start rental session | `control.start_rental.{vehicle_id}` |
+| `vehicle.control.end_rental` | End rental session | `control.end_rental.{vehicle_id}` |
+| `vehicle.control.kill_engine` | Emergency engine disable | `control.kill_engine.{vehicle_id}` |
+| `vehicle.control.unlock` | Unlock vehicle | `control.unlock.{vehicle_id}` |
+| `vehicle.control.lock` | Lock vehicle | `control.lock.{vehicle_id}` |
 
-### Realtime Data (Device → Backend)
-- `vehicle.realtime.location` - GPS coordinates (lat, long)
-- `vehicle.realtime.status` - Device status (kill status, device active/inactive)
-- `vehicle.realtime.battery` - Battery voltage (device battery & vehicle battery)
+### Real-time Data (Vehicle → Backend)
+| Queue | Purpose | Routing Key Pattern |
+|-------|---------|-------------------|
+| `vehicle.realtime.location` | GPS coordinates | `realtime.location.{vehicle_id}` |
+| `vehicle.realtime.status` | Engine & device status | `realtime.status.{vehicle_id}` |
+| `vehicle.realtime.battery` | Battery levels | `realtime.battery.{vehicle_id}` |
+| `vehicle.realtime.speed` | Current speed | `realtime.speed.{vehicle_id}` |
 
-### Rental Reports (Device → Backend)
-- `vehicle.report.maintenance` - Maintenance data per rental (Ban, Rem, Rantai/CVT, Oli, Aki, Lampu, Busi)
-- `vehicle.report.performance` - Performance data per rental (Skor Berat, Max Speed, Total Km)
+### Maintenance Reports (Vehicle → Backend)
+| Queue | Purpose | Routing Key Pattern |
+|-------|---------|-------------------|
+| `vehicle.report.maintenance` | Component condition scores | `report.maintenance.{vehicle_id}` |
+| `vehicle.report.performance` | Trip performance metrics | `report.performance.{vehicle_id}` |
+| `vehicle.report.tire_condition` | Front & rear tire status | `report.tire_condition.{vehicle_id}` |
 
-### System
-- `vehicle.dlq` - Dead letter queue for failed messages
+### System Queues
+| Queue | Purpose |
+|-------|---------|
+| `vehicle.dlq` | Dead letter queue for failed messages |
+| `vehicle.alerts` | System alerts and notifications |
 
-## 🔑 Users & Permissions
+## 🔑 User Roles & Permissions
 
-### 1. `admin`
-- **Role:** Administrator
+### Administrator (`admin`)
+- **Password:** `admin123`
 - **Permissions:** Full access to all resources
-- **Usage:** Management and monitoring
-- **Password:** `@dmin2510`
+- **Usage:** System management and monitoring
 
-### 2. `gps`
-- **Role:** GPS Device Publisher/Consumer
-- **Permissions:** Write realtime/report data, Read control messages
-- **Usage:** GPS devices sending/receiving data
-- **Password:** `9p5data`
+### GPS Device (`gps_device`)
+- **Password:** `gps_secure_2024`
+- **Permissions:** 
+  - **Publish:** realtime data, maintenance reports
+  - **Subscribe:** control commands
+- **Usage:** GPS tracking devices
 
-### 3. `backend`
-- **Role:** Backend Service
-- **Permissions:** Write control messages, Read realtime/report data
-- **Usage:** Backend services managing vehicles
-- **Password:** `b@ckend`
+### Backend Service (`backend_service`)
+- **Password:** `backend_secure_2024`
+- **Permissions:**
+  - **Publish:** control commands
+  - **Subscribe:** realtime data, reports
+- **Usage:** Backend APIs and services
 
-## 📡 Routing Keys
+## 💻 Code Examples
 
-### Control Messages
-- `control.start_rent.{vehicle_id}` → `vehicle.control.start_rent`
-- `control.end_rent.{vehicle_id}` → `vehicle.control.end_rent`
-- `control.kill_vehicle.{vehicle_id}` → `vehicle.control.kill_vehicle`
+### Backend Consumer (TypeScript)
 
-### Realtime Data
-- `realtime.location.{vehicle_id}` → `vehicle.realtime.location`
-- `realtime.status.{vehicle_id}` → `vehicle.realtime.status`
-- `realtime.battery.{vehicle_id}` → `vehicle.realtime.battery`
+```typescript
+import { VehicleDataConsumer } from './examples/backend-consumer'
 
-### Report Data
-- `report.maintenance.{vehicle_id}` → `vehicle.report.maintenance`
-- `report.performance.{vehicle_id}` → `vehicle.report.performance`
+const consumer = new VehicleDataConsumer({
+  url: 'amqp://backend_service:backend_secure_2024@localhost:5672',
+  prefetch: 10
+})
 
-## 💻 Backend Code Examples
+await consumer.connect()
+await consumer.startConsuming()
+```
 
-### Backend Consumer - Receive Device Data
+### Publish Control Command
 
-```javascript
-const amqp = require('amqplib');
+```typescript
+import { VehicleController } from './examples/vehicle-controller'
 
-class VehicleDataConsumer {
-    constructor() {
-        this.connection = null;
-        this.channel = null;
-    }
+const controller = new VehicleController()
+await controller.connect()
 
-    async connect() {
-        this.connection = await amqp.connect(
-            'amqp://backend:b@ckend@localhost:5672'
-        );
-        this.channel = await this.connection.createChannel();
-        
-        // Set prefetch for better performance
-        await this.channel.prefetch(10);
-    }
+// Start rental
+await controller.startRental('VEHICLE_001', {
+  rental_id: 'RENT_12345',
+  user_id: 'USER_789',
+  duration_minutes: 60
+})
 
-    async consumeRealtimeLocation() {
-        await this.channel.consume('vehicle.realtime.location', async (msg) => {
-            try {
-                const data = JSON.parse(msg.content.toString());
-                console.log(`Location from ${data.vehicle_id}:`, {
-                    lat: data.lat,
-                    long: data.long,
-                    timestamp: data.timestamp
-                });
+// Kill engine in emergency
+await controller.killEngine('VEHICLE_001', {
+  reason: 'emergency_stop',
+  operator_id: 'ADMIN_001'
+})
+```
 
-                // Process location data
-                await this.processLocationData(data);
-                
-                this.channel.ack(msg);
-            } catch (error) {
-                console.error('Error processing location data:', error);
-                this.channel.nack(msg, false, false); // Send to DLQ
-            }
-        });
-    }
+### Vehicle Data Publisher
 
-    async consumeRealtimeStatus() {
-        await this.channel.consume('vehicle.realtime.status', async (msg) => {
-            try {
-                const data = JSON.parse(msg.content.toString());
-                console.log(`Status from ${data.vehicle_id}:`, {
-                    is_killed: data.is_killed,
-                    device_active: data.device_active,
-                    timestamp: data.timestamp
-                });
+```typescript
+import { VehicleDataPublisher } from './examples/vehicle-publisher'
 
-                // Process status data
-                await this.processStatusData(data);
-                
-                this.channel.ack(msg);
-            } catch (error) {
-                console.error('Error processing status data:', error);
-                this.channel.nack(msg, false, false);
-            }
-        });
-    }
+const publisher = new VehicleDataPublisher('VEHICLE_001')
+await publisher.connect()
 
-    async consumeRealtimeBattery() {
-        await this.channel.consume('vehicle.realtime.battery', async (msg) => {
-            try {
-                const data = JSON.parse(msg.content.toString());
-                console.log(`Battery from ${data.vehicle_id}:`, {
-                    device_voltage: data.device_voltage,
-                    vehicle_voltage: data.vehicle_voltage,
-                    timestamp: data.timestamp
-                });
+// Send location update
+await publisher.publishLocation({
+  latitude: -6.2088,
+  longitude: 106.8456,
+  speed: 45.5,
+  heading: 180
+})
 
-                // Process battery data
-                await this.processBatteryData(data);
-                
-                this.channel.ack(msg);
-            } catch (error) {
-                console.error('Error processing battery data:', error);
-                this.channel.nack(msg, false, false);
-            }
-        });
-    }
+// Send maintenance report
+await publisher.publishMaintenanceReport({
+  rental_id: 'RENT_12345',
+  tire_front_left: 85,
+  tire_front_right: 87,
+  tire_rear_left: 82,
+  tire_rear_right: 84,
+  brake_pads: 75,
+  chain_cvt: 90,
+  engine_oil: 88,
+  battery: 92,
+  lights: 95,
+  spark_plug: 89
+})
+```
 
-    async consumeMaintenanceReport() {
-        await this.channel.consume('vehicle.report.maintenance', async (msg) => {
-            try {
-                const data = JSON.parse(msg.content.toString());
-                console.log(`Maintenance report from ${data.vehicle_id}:`, {
-                    ban: data.ban,
-                    rem: data.rem,
-                    rantai_cvt: data.rantai_cvt,
-                    oli: data.oli,
-                    aki: data.aki,
-                    lampu: data.lampu,
-                    busi: data.busi,
-                    rental_id: data.rental_id
-                });
+## 🏭 Data Models
 
-                // Process maintenance report
-                await this.processMaintenanceReport(data);
-                
-                this.channel.ack(msg);
-            } catch (error) {
-                console.error('Error processing maintenance report:', error);
-                this.channel.nack(msg, false, false);
-            }
-        });
-    }
-
-    async consumePerformanceReport() {
-        await this.channel.consume('vehicle.report.performance', async (msg) => {
-            try {
-                const data = JSON.parse(msg.content.toString());
-                console.log(`Performance report from ${data.vehicle_id}:`, {
-                    skor_berat: data.skor_berat,
-                    max_speed: data.max_speed,
-                    total_km: data.total_km,
-                    rental_id: data.rental_id
-                });
-
-                // Process performance report
-                await this.processPerformanceReport(data);
-                
-                this.channel.ack(msg);
-            } catch (error) {
-                console.error('Error processing performance report:', error);
-                this.channel.nack(msg, false, false);
-            }
-        });
-    }
-
-    // Processing methods
-    async processLocationData(data) {
-        // Save to database, update real-time dashboard, etc.
-        console.log('Processing location data...');
-    }
-
-    async processStatusData(data) {
-        // Update vehicle status, trigger alerts if killed, etc.
-        console.log('Processing status data...');
-    }
-
-    async processBatteryData(data) {
-        // Monitor battery levels, send low battery alerts, etc.
-        console.log('Processing battery data...');
-    }
-
-    async processMaintenanceReport(data) {
-        // Save maintenance scores, schedule maintenance if needed, etc.
-        console.log('Processing maintenance report...');
-    }
-
-    async processPerformanceReport(data) {
-        // Calculate rental performance scores, update analytics, etc.
-        console.log('Processing performance report...');
-    }
-
-    async startConsuming() {
-        await this.consumeRealtimeLocation();
-        await this.consumeRealtimeStatus();
-        await this.consumeRealtimeBattery();
-        await this.consumeMaintenanceReport();
-        await this.consumePerformanceReport();
-
-        console.log('Backend consumer started, waiting for messages...');
-    }
-
-    async close() {
-        if (this.channel) await this.channel.close();
-        if (this.connection) await this.connection.close();
-    }
+### Maintenance Report Schema
+```typescript
+interface MaintenanceReport {
+  vehicle_id: string
+  rental_id: string
+  timestamp: string
+  
+  // Tire condition (0-100 score)
+  tire_front_left: number
+  tire_front_right: number
+  tire_rear_left: number
+  tire_rear_right: number
+  
+  // Component scores (0-100)
+  brake_pads: number
+  chain_cvt: number
+  engine_oil: number
+  battery: number
+  lights: number
+  spark_plug: number
+  
+  // Overall scores
+  overall_score: number
+  maintenance_required: boolean
 }
+```
 
-// Usage example
-async function main() {
-    const consumer = new VehicleDataConsumer();
-    await consumer.connect();
-    await consumer.startConsuming();
-
-    // Keep running
-    process.on('SIGTERM', async () => {
-        console.log('Shutting down consumer...');
-        await consumer.close();
-        process.exit(0);
-    });
+### Location Data Schema
+```typescript
+interface LocationData {
+  vehicle_id: string
+  timestamp: string
+  latitude: number
+  longitude: number
+  speed: number        // km/h
+  heading: number      // degrees
+  altitude?: number    // meters
+  accuracy?: number    // meters
 }
-
-main().catch(console.error);
 ```
 
 ## 🛠️ Management Commands
@@ -318,133 +268,142 @@ main().catch(console.error);
 ```bash
 ./setup.sh start      # Start broker
 ./setup.sh stop       # Stop broker
+./setup.sh restart    # Restart broker
 ./setup.sh logs       # View logs
 ./setup.sh status     # Check status
-./setup.sh            # Interactive menu
+./setup.sh backup     # Backup configuration
+./setup.sh health     # Health check
 ```
 
-### Using Docker Commands
+### Direct Docker Commands
 
 ```bash
-# View logs
+# View real-time logs
 docker-compose logs -f
 
-# Check status
-docker-compose ps
-
 # Execute RabbitMQ commands
-docker exec rental-rabbitmq-broker rabbitmqctl list_queues
-docker exec rental-rabbitmq-broker rabbitmqctl list_connections
-docker exec rental-rabbitmq-broker rabbitmqctl list_consumers
+docker exec vehicle-rabbitmq rabbitmqctl list_queues
+docker exec vehicle-rabbitmq rabbitmqctl list_connections
+docker exec vehicle-rabbitmq rabbitmqctl list_consumers
+
+# Performance monitoring
+docker exec vehicle-rabbitmq rabbitmqctl status
 ```
 
-## 📊 Monitoring
+## 📊 Monitoring & Health Checks
 
-### Queue Statistics
+### Queue Metrics
+```bash
+# Queue statistics
+docker exec vehicle-rabbitmq rabbitmqctl list_queues name messages consumers
+
+# Message rates
+docker exec vehicle-rabbitmq rabbitmqctl list_queues name message_stats.publish_details.rate
+
+# Connection status
+docker exec vehicle-rabbitmq rabbitmqctl list_connections name peer_host state
+```
+
+### Health Monitoring Script
+```bash
+# Run health check
+./scripts/health-check.sh
+
+# Expected output:
+# ✅ RabbitMQ is running
+# ✅ All queues are responding
+# ✅ Memory usage: 45%
+# ✅ Disk space: 78% available
+```
+
+## 🚀 Deployment & CI/CD
+
+### VPS Deployment
+
+The project includes GitHub Actions workflow for automatic deployment to VPS:
+
+1. **Push to main branch** → Triggers CI/CD
+2. **Build & Test** → Validates configuration
+3. **Deploy to VPS** → Updates production environment
+4. **Health Check** → Verifies deployment success
+
+### Environment Setup for VPS
 
 ```bash
-docker exec rental-rabbitmq-broker rabbitmqctl list_queues name messages consumers
+# Production environment
+cp .env.example .env.production
+
+# Update for production
+RABBITMQ_DEFAULT_USER=admin
+RABBITMQ_DEFAULT_PASS=YOUR_SECURE_PASSWORD
+RABBITMQ_MEMORY_LIMIT=0.8
+RABBITMQ_LOG_LEVEL=warning
 ```
 
-### Connection Status
+## 🔍 Troubleshooting
 
+### Common Issues
+
+**Broker won't start**
 ```bash
-docker exec rental-rabbitmq-broker rabbitmqctl list_connections name peer_host peer_port state
+# Check logs
+docker-compose logs vehicle-rabbitmq
+
+# Check port conflicts
+netstat -tulpn | grep :5672
 ```
 
-### Memory Usage
-
+**High memory usage**
 ```bash
-docker exec rental-rabbitmq-broker rabbitmqctl status
-```
-
-## 🎯 Message Flow
-
-```
-Backend Service → RabbitMQ Exchange → Control Queues → GPS Devices
-                        ↕
-GPS Devices → RabbitMQ Exchange → Data Queues → Backend Service
-                        ↓
-              vehicle.exchange
-                        ↓
-        ┌───────────────┼───────────────┐
-        ↓               ↓               ↓
-   control.*       realtime.*      report.*
-        ↓               ↓               ↓
-   GPS Devices     Backend API     Analytics
-```
-
-## 🐛 Troubleshooting
-
-### Broker won't start
-
-```bash
-docker-compose logs
-docker volume ls
-```
-
-### Port already in use
-
-Edit `.env`:
-```bash
-RABBITMQ_AMQP_PORT=5673
-RABBITMQ_MANAGEMENT_PORT=15673
-```
-
-### Messages not being consumed
-
-1. Check backend consumer is running
-2. Verify credentials and permissions
-3. Check queue bindings
-4. Review consumer logs
-5. Check dead letter queue for failed messages
-
-### High memory usage
-
-Edit `config/rabbitmq.conf`:
-```conf
+# Adjust memory limit in config/rabbitmq.conf
 vm_memory_high_watermark.relative = 0.4
+
+# Restart broker
+./setup.sh restart
 ```
 
-## 🔄 Backup & Restore
-
-### Backup
-
+**Messages not being consumed**
 ```bash
-docker exec rental-rabbitmq-broker rabbitmqctl export_definitions /tmp/backup.json
-docker cp rental-rabbitmq-broker:/tmp/backup.json ./backup.json
+# Check consumer connections
+docker exec vehicle-rabbitmq rabbitmqctl list_consumers
+
+# Check dead letter queue
+docker exec vehicle-rabbitmq rabbitmqctl list_queues | grep dlq
 ```
 
-### Restore
+## 📈 Performance Optimization
 
-```bash
-docker cp backup.json rental-rabbitmq-broker:/tmp/
-docker exec rental-rabbitmq-broker rabbitmqctl import_definitions /tmp/backup.json
-```
+### High Throughput Configuration
 
-## 📈 Performance Tuning
-
-### High Throughput Setup
+For production environments handling high message volumes:
 
 ```conf
 # config/rabbitmq.conf
 channel_max = 2047
 frame_max = 131072
 heartbeat = 60
-vm_memory_high_watermark.relative = 0.6
+vm_memory_high_watermark.relative = 0.8
+collect_statistics_interval = 10000
 ```
 
-### Backend Consumer Optimization
+### Consumer Optimization
 
-- Set appropriate prefetch count (10-50)
-- Use multiple consumer instances
-- Implement batch processing for reports
-- Monitor consumer lag
-- Use connection pooling for high load
+```typescript
+// Set appropriate prefetch for consumers
+await channel.prefetch(50)
 
-## 📚 Documentation
+// Use multiple consumer instances
+const consumerCount = 4
+for (let i = 0; i < consumerCount; i++) {
+  const consumer = new VehicleDataConsumer()
+  await consumer.connect()
+  await consumer.startConsuming()
+}
+```
 
-- [RabbitMQ Docs](https://www.rabbitmq.com/documentation.html)
-- [AMQP Protocol](https://www.amqp.org/)
-- [amqplib (Node.js)](https://www.squaremobius.net/amqp.node/)
-- [RabbitMQ Management Plugin](https://www.rabbitmq.com/management.html)
+## 📚 Documentation Links
+
+- [RabbitMQ Official Documentation](https://www.rabbitmq.com/documentation.html)
+- [AMQP 0-9-1 Protocol](https://www.amqp.org/)
+- [Docker Compose Reference](https://docs.docker.com/compose/)
+- [TypeScript amqplib Guide](https://www.npmjs.com/package/amqplib)
