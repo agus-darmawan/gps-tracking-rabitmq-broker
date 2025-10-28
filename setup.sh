@@ -133,15 +133,6 @@ start_broker() {
     # Health check with detailed diagnostics
     if check_broker_health; then
         print_success "RabbitMQ broker started successfully"
-        
-        # Verify plugins are loaded
-        print_info "Verifying plugins..."
-        if docker exec "$CONTAINER_NAME" rabbitmqctl list_plugins | grep -q "rabbitmq_management.*enabled"; then
-            print_success "Management plugin enabled"
-        else
-            print_warning "Management plugin may not be enabled"
-        fi
-        
         show_connection_info
         show_queue_summary
         
@@ -268,11 +259,6 @@ show_status() {
         docker exec "$CONTAINER_NAME" rabbitmqctl list_users
         echo ""
         
-        # Plugin status
-        print_subheader "Enabled Plugins:"
-        docker exec "$CONTAINER_NAME" rabbitmqctl list_plugins | grep enabled
-        echo ""
-        
     else
         print_warning "RabbitMQ broker is not running"
     fi
@@ -342,6 +328,205 @@ show_connections() {
     print_subheader "Active Consumers:"
     docker exec "$CONTAINER_NAME" rabbitmqctl list_consumers queue_name consumer_tag | \
         column -t -s $'\t'
+}
+
+backup_configuration() {
+    print_header "Backing Up Configuration"
+    
+    if ! docker ps | grep -q "$CONTAINER_NAME"; then
+        print_error "RabbitMQ broker is not running"
+        return 1
+    fi
+    
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+    local backup_file="$BACKUP_DIR/rabbitmq_backup_$timestamp.json"
+    
+    print_info "Creating configuration backup..."
+    docker exec "$CONTAINER_NAME" rabbitmqctl export_definitions /tmp/backup.json
+    docker cp "$CONTAINER_NAME:/tmp/backup.json" "$backup_file"
+    
+    print_success "Backup saved: $backup_file"
+    
+    # Clean old backups (keep last 10)
+    ls -t "$BACKUP_DIR"/rabbitmq_backup_*.json 2>/dev/null | tail -n +11 | xargs -r rm
+    print_info "Old backups cleaned (keeping last 10)"
+}
+
+restore_configuration() {
+    print_header "Restoring Configuration"
+    
+    if ! docker ps | grep -q "$CONTAINER_NAME"; then
+        print_error "RabbitMQ broker is not running"
+        return 1
+    fi
+    
+    # List available backups
+    print_subheader "Available Backups:"
+    ls -la "$BACKUP_DIR"/rabbitmq_backup_*.json 2>/dev/null | nl
+    echo ""
+    
+    read -p "Enter backup file name (or press Enter to cancel): " backup_file
+    
+    if [ -z "$backup_file" ]; then
+        print_info "Restore cancelled"
+        return 0
+    fi
+    
+    if [ ! -f "$BACKUP_DIR/$backup_file" ]; then
+        print_error "Backup file not found: $backup_file"
+        return 1
+    fi
+    
+    print_warning "This will overwrite current configuration!"
+    read -p "Are you sure? (y/N): " -n 1 -r
+    echo
+    
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_info "Restore cancelled"
+        return 0
+    fi
+    
+    docker cp "$BACKUP_DIR/$backup_file" "$CONTAINER_NAME:/tmp/restore.json"
+    docker exec "$CONTAINER_NAME" rabbitmqctl import_definitions /tmp/restore.json
+    
+    print_success "Configuration restored from: $backup_file"
+}
+
+# Start broker with minimal configuration
+start_broker_minimal() {
+    print_header "Starting RabbitMQ with Minimal Configuration"
+    print_info "Using minimal setup for testing and troubleshooting..."
+    
+    # Stop any existing containers
+    docker-compose down 2>/dev/null || true
+    
+    # Start with minimal config
+    if [ -f "docker-compose.minimal.yml" ]; then
+        docker-compose -f docker-compose.minimal.yml up -d
+        
+        print_info "Waiting for RabbitMQ to initialize..."
+        sleep 20
+        
+        if check_broker_health; then
+            print_success "RabbitMQ started with minimal configuration"
+            show_connection_info
+        else
+            print_error "Failed to start even with minimal configuration"
+            docker-compose -f docker-compose.minimal.yml logs --tail=20
+        fi
+    else
+        print_error "Minimal configuration file not found"
+    fi
+}
+
+# Start broker with production configuration
+start_broker_production() {
+    print_header "Starting RabbitMQ with Production Configuration"
+    print_warning "This will use production settings and resource limits"
+    
+    if [ ! -f ".env.production" ]; then
+        print_error "Production environment file (.env.production) not found"
+        print_info "Please create .env.production with your production settings"
+        return 1
+    fi
+    
+    # Stop any existing containers
+    docker-compose down 2>/dev/null || true
+    
+    # Start with production config
+    if [ -f "docker-compose.production.yml" ]; then
+        docker-compose -f docker-compose.production.yml up -d
+        
+        print_info "Waiting for RabbitMQ to initialize (production startup may take longer)..."
+        sleep 30
+        
+        if check_broker_health; then
+            print_success "RabbitMQ started with production configuration"
+            show_connection_info
+            
+            # Additional production checks
+            print_info "Running production health checks..."
+            docker exec "$CONTAINER_NAME" rabbitmqctl status | grep -E "(Memory|Disk)" || true
+        else
+            print_error "Failed to start with production configuration"
+            docker-compose -f docker-compose.production.yml logs --tail=20
+        fi
+    else
+        print_error "Production configuration file not found"
+    fi
+}
+
+# Fix configuration issues
+fix_configuration() {
+    print_header "Configuration Issue Fixer"
+    print_info "Checking and fixing common configuration problems..."
+    
+    # Check for common issues
+    local issues_found=0
+    
+    # Check definitions.json
+    if [ -f "config/definitions.json" ]; then
+        if ! python3 -m json.tool config/definitions.json > /dev/null 2>&1; then
+            print_warning "Invalid JSON in config/definitions.json"
+            issues_found=$((issues_found + 1))
+        else
+            print_success "definitions.json is valid"
+        fi
+    else
+        print_error "Missing config/definitions.json"
+        issues_found=$((issues_found + 1))
+    fi
+    
+    # Check environment file
+    if [ -f ".env" ]; then
+        print_success ".env file exists"
+        
+        # Check for required variables
+        if ! grep -q "RABBITMQ_DEFAULT_USER" .env; then
+            print_warning "Missing RABBITMQ_DEFAULT_USER in .env"
+            issues_found=$((issues_found + 1))
+        fi
+    else
+        print_warning "No .env file found - using defaults"
+    fi
+    
+    # Check Docker Compose syntax
+    if docker-compose config > /dev/null 2>&1; then
+        print_success "docker-compose.yml syntax is valid"
+    else
+        print_error "docker-compose.yml has syntax errors"
+        issues_found=$((issues_found + 1))
+    fi
+    
+    # Check for conflicting containers
+    if docker ps -a | grep -q "$CONTAINER_NAME"; then
+        print_info "Found existing container, cleaning up..."
+        docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+    fi
+    
+    # Summary
+    echo ""
+    if [ $issues_found -eq 0 ]; then
+        print_success "No configuration issues found"
+        print_info "Try starting the broker with: ./setup.sh start"
+    else
+        print_warning "Found $issues_found configuration issues"
+        print_info "Review the messages above and fix the issues"
+        print_info "You can also try the minimal configuration: ./setup.sh start-minimal"
+    fi
+    
+    # Offer to view troubleshooting guide
+    echo ""
+    read -p "Would you like to view the troubleshooting guide? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if [ -f "TROUBLESHOOTING.md" ]; then
+            less TROUBLESHOOTING.md
+        else
+            print_info "Troubleshooting guide not found"
+            print_info "Check README.md for troubleshooting information"
+        fi
+    fi
 }
 
 backup_configuration() {
@@ -587,13 +772,12 @@ show_menu() {
     echo " 14) Fix Configuration Issues"
     echo ""
     echo " 🎮 Development:"
-    echo " 15) Run Examples"
-    echo " 16) Health Check"
+    echo " 15) Health Check"
     echo ""
     echo " ⚠️  Danger Zone:"
-    echo " 17) Clean All Data"
+    echo " 16) Clean All Data"
     echo ""
-    echo " 18) Exit"
+    echo " 17) Exit"
     echo ""
 }
 
@@ -660,24 +844,27 @@ main() {
     # Interactive menu mode
     while true; do
         show_menu
-        read -p "Select option (1-15): " choice
+        read -p "Select option (1-18): " choice
         
         case $choice in
             1) setup_environment; start_broker ;;
-            2) stop_broker ;;
-            3) restart_broker ;;
-            4) show_status ;;
-            5) show_logs ;;
-            6) show_queues ;;
-            7) show_connections ;;
-            8) health_monitor ;;
-            9) backup_configuration ;;
-            10) restore_configuration ;;
-            11) purge_queue ;;
-            12) run_examples ;;
-            13) check_broker_health && print_success "Health check passed" || print_error "Health check failed" ;;
-            14) clean_all ;;
-            15) print_info "Goodbye! 👋"; exit 0 ;;
+            2) setup_environment; start_broker_minimal ;;
+            3) setup_environment; start_broker_production ;;
+            4) stop_broker ;;
+            5) restart_broker ;;
+            6) show_status ;;
+            7) show_logs ;;
+            8) show_queues ;;
+            9) show_connections ;;
+            10) health_monitor ;;
+            11) backup_configuration ;;
+            12) restore_configuration ;;
+            13) purge_queue ;;
+            14) fix_configuration ;;
+            15) run_examples ;;
+            16) check_broker_health && print_success "Health check passed" || print_error "Health check failed" ;;
+            17) clean_all ;;
+            18) print_info "Goodbye! 👋"; exit 0 ;;
             *) print_error "Invalid option. Please try again." ;;
         esac
         
