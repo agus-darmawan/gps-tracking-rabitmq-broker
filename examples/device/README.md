@@ -2,17 +2,16 @@
 
 Python script that simulates a GPS tracking device for testing the RabbitMQ broker and backend.
 
-## Features
+## 🚀 Features
 
-- Publishes real-time location data (every 5 seconds)
-- Publishes vehicle status (locked/active state)
-- Publishes battery level and voltage
-- Publishes maintenance reports (component health scores)
-- Publishes performance reports (trip metrics)
-- Listens for control commands (start_rent, end_rent, kill_vehicle)
-- Simulates vehicle movement when active
+- Publishes **real-time location**, **status**, **battery**, **maintenance**, and **performance reports**
+- Listens for **control commands** (`start_rent`, `end_rent`, `kill_vehicle`)
+- Simulates realistic **vehicle movement**
+- Simple to run — no external dependencies beyond `pika`
 
-## Installation
+---
+
+## ⚙️ Installation
 
 ```bash
 # Install dependencies
@@ -22,9 +21,11 @@ pip install -r requirements.txt
 pip install pika==1.3.2
 ```
 
-## Usage
+---
 
-### Basic Usage (localhost)
+## 🧭 Usage
+
+### Localhost Example
 ```bash
 python publisher.py VEHICLE_001
 ```
@@ -34,19 +35,16 @@ python publisher.py VEHICLE_001
 python publisher.py VEHICLE_001 amqp://vehicle:vehicle123@103.175.219.138:5672
 ```
 
-### Multiple Vehicles
+### Simulate Multiple Vehicles
 ```bash
-# Terminal 1
 python publisher.py VEHICLE_001
-
-# Terminal 2
 python publisher.py VEHICLE_002
-
-# Terminal 3
 python publisher.py VEHICLE_003
 ```
 
-## Published Messages
+---
+
+## 📡 Published Messages
 
 ### Location (every 5 seconds)
 ```json
@@ -117,73 +115,64 @@ python publisher.py VEHICLE_003
 }
 ```
 
-## Control Commands
+---
 
-The device listens and responds to these commands:
+## 🕹️ Control Commands
 
-### Start Rental
-- Command: `start_rent`
-- Action: Unlocks vehicle, activates engine, starts movement simulation
+| Command | Description |
+|----------|--------------|
+| `start_rent` | Unlocks vehicle and starts movement simulation |
+| `end_rent` | Locks vehicle and publishes final report |
+| `kill_vehicle` | Emergency stop — immediately locks vehicle |
 
-### End Rental
-- Command: `end_rent`
-- Action: Locks vehicle, deactivates engine, stops movement, publishes final reports
+---
 
-### Emergency Stop
-- Command: `kill_vehicle`
-- Action: Immediately locks vehicle and stops engine
+## 🧪 Testing Flow
 
-## Testing Flow
-
-1. **Start the device simulator:**
+1. **Start the simulator**
    ```bash
    python publisher.py VEHICLE_001
    ```
 
-2. **Send commands using the backend API:**
+2. **Send control commands**
    ```bash
-   # Start rental
-   curl -X POST http://localhost:3001/api/control/start_rent \
-     -H "Content-Type: application/json" \
-     -d '{"vehicle_id": "VEHICLE_001"}'
-
-   # End rental
-   curl -X POST http://localhost:3001/api/control/end_rent \
-     -H "Content-Type: application/json" \
-     -d '{"vehicle_id": "VEHICLE_001"}'
+   curl -X POST http://localhost:3001/api/control/start_rent -H "Content-Type: application/json" -d '{"vehicle_id": "VEHICLE_001"}'
+   curl -X POST http://localhost:3001/api/control/end_rent -H "Content-Type: application/json" -d '{"vehicle_id": "VEHICLE_001"}'
    ```
 
-3. **Check data in backend:**
+3. **Check data in backend**
    ```bash
-   # Get location
    curl http://localhost:3001/api/location/VEHICLE_001
-
-   # Get status
    curl http://localhost:3001/api/status/VEHICLE_001
-
-   # Get battery
    curl http://localhost:3001/api/battery/VEHICLE_001
    ```
 
-## Troubleshooting
+---
 
-**Connection Refused:**
+## 🧰 Troubleshooting
+
+### Connection Refused
 ```bash
-# Check if RabbitMQ is running
 docker ps | grep rabbitmq
-
-# Check RabbitMQ logs
 docker logs tracking-rabbitmq-broker
 ```
 
-**Authentication Failed:**
+### Authentication Failed
 ```bash
-# Verify credentials in .env file
-# Default: vehicle:vehicle123
+# Verify credentials in .env
+RABBITMQ_USER=vehicle
+RABBITMQ_PASS=vehicle123
 ```
 
-**No messages received:**
+### No Messages Received
 ```bash
-# Check queue bindings in RabbitMQ management UI
-# http://localhost:15672
+# Check RabbitMQ queue bindings at
+http://localhost:15672
 ```
+
+---
+
+**Author:** Agus Darmawan  
+**Project:** Vehicle Device Simulator  
+**Version:** 1.0.0  
+**License:** MIT
