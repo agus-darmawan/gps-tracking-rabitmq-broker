@@ -1,49 +1,36 @@
+version: "3.9"
+
 services:
-  vehicle-rabbitmq:
+  tracking-rabbitmq:
     image: rabbitmq:3.12-management-alpine
-    container_name: vehicle-rabbitmq-broker
-    hostname: vehicle-rabbitmq
-    restart: unless-stopped
-    
+    container_name: tracking-rabbitmq-broker
+    hostname: tracking-rabbitmq
     ports:
       - "${RABBITMQ_AMQP_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
       - "${RABBITMQ_MQTT_PORT:-1883}:1883"
-    
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-admin}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-admin123}
       RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-/}
-      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-vehicle_rental_cookie_2024}
-      # Enable plugins
-      RABBITMQ_PLUGINS: rabbitmq_management,rabbitmq_mqtt
-    
+      RABBITMQ_LOAD_DEFINITIONS: /etc/rabbitmq/definitions.json
+    env_file:
+      - .env
     volumes:
-      - vehicle_rabbitmq_data:/var/lib/rabbitmq
-      - vehicle_rabbitmq_logs:/var/log/rabbitmq
+      - tracking_rabbitmq_data:/var/lib/rabbitmq
+      - tracking_rabbitmq_logs:/var/log/rabbitmq
       - ./config/definitions.json:/etc/rabbitmq/definitions.json:ro
-    
+      - ./config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: ${HEALTH_CHECK_INTERVAL:-30s}
-      timeout: ${HEALTH_CHECK_TIMEOUT:-10s}
-      retries: ${HEALTH_CHECK_RETRIES:-3}
-      start_period: 40s
-    
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.rabbitmq.rule=Host(`rabbitmq.localhost`)"
-      - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
+      test: rabbitmq-diagnostics -q ping && rabbitmq-diagnostics -q check_port_connectivity
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 volumes:
-  vehicle_rabbitmq_data:
+  tracking_rabbitmq_data:
     driver: local
-    labels:
-      - "backup.enabled=true"
-      - "backup.schedule=daily"
-  
-  vehicle_rabbitmq_logs:
+  tracking_rabbitmq_logs:
     driver: local
-    labels:
-      - "cleanup.enabled=true"
-      - "cleanup.retention=7d"

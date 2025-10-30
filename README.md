@@ -90,9 +90,6 @@ RABBITMQ_AMQP_PORT=5672
 RABBITMQ_MANAGEMENT_PORT=15672
 RABBITMQ_MQTT_PORT=1883
 
-# Performance & Logging
-RABBITMQ_LOG_LEVEL=info
-RABBITMQ_MEMORY_LIMIT=0.6
 ```
 
 ## 📦 Message Queues & Routing
@@ -134,15 +131,15 @@ RABBITMQ_MEMORY_LIMIT=0.6
 - **Permissions:** Full access to all resources
 - **Usage:** System management and monitoring
 
-### GPS Device (`gps_device`)
-- **Password:** `gps_secure_2024`
+### GPS Device (`vehicle`)
+- **Password:** `vehicle123`
 - **Permissions:** 
   - **Publish:** realtime data, maintenance reports
   - **Subscribe:** control commands
 - **Usage:** GPS tracking devices
 
-### Backend Service (`backend_service`)
-- **Password:** `backend_secure_2024`
+### Backend Service (`backend`)
+- **Password:** `backend123`
 - **Permissions:**
   - **Publish:** control commands
   - **Subscribe:** realtime data, reports

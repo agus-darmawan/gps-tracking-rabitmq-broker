@@ -1,40 +1,28 @@
 {
   "rabbit_version": "3.12.0",
   "rabbitmq_version": "3.12.0",
-  "product_name": "RabbitMQ",
-  "product_version": "3.12.0",
   "users": [
     {
       "name": "admin",
-      "password_hash": "oOXxzPZWXYKaACHs2jYlhGdVtjdxKaLgqoQPvzO14GAdcP+E",
+      "password_hash": "v6dAjGXVuqMlJrFU+JH0WvZdQBPzPxN3FyBJHYTYuRNPf9PU",
       "hashing_algorithm": "rabbit_password_hashing_sha256",
-      "tags": "administrator",
-      "limits": {}
+      "tags": "administrator"
     },
     {
-      "name": "gps_device",
-      "password_hash": "gps_secure_2024_hash",
+      "name": "backend",
+      "password_hash": "e5V2Bk6+/6aLsDkkCrqHYYBlQ8G1Hy3pG2lRvZUI4anvkP/l",
       "hashing_algorithm": "rabbit_password_hashing_sha256",
-      "tags": "gps_device",
-      "limits": {}
+      "tags": ""
     },
     {
-      "name": "backend_service",
-      "password_hash": "backend_secure_2024_hash",
+      "name": "vehicle",
+      "password_hash": "jRNTpGvCzXVSQ28hABAMcMEOQizmda+EMwsq+I/2jE6NZbDz",
       "hashing_algorithm": "rabbit_password_hashing_sha256",
-      "tags": "backend_service",
-      "limits": {}
+      "tags": ""
     }
   ],
   "vhosts": [
-    {
-      "name": "/",
-      "description": "Default virtual host for vehicle rental system",
-      "metadata": {
-        "description": "Main vhost for all vehicle rental operations",
-        "tags": ["vehicle", "rental", "tracking"]
-      }
-    }
+    { "name": "/" }
   ],
   "permissions": [
     {
@@ -45,30 +33,25 @@
       "read": ".*"
     },
     {
-      "user": "gps_device",
+      "user": "backend",
       "vhost": "/",
-      "configure": "",
-      "write": "^(vehicle\\.realtime\\.|vehicle\\.report\\.).*",
-      "read": "^vehicle\\.control\\..*"
+      "configure": "^$",
+      "write": "^vehicle\\.control\\..*",
+      "read": "^vehicle\\.realtime\\.(location|status|battery)$"
     },
     {
-      "user": "backend_service",
+      "user": "vehicle",
       "vhost": "/",
-      "configure": "",
-      "write": "^vehicle\\.control\\..*",
-      "read": "^(vehicle\\.realtime\\.|vehicle\\.report\\.|vehicle\\.alerts).*"
+      "configure": "^$",
+      "write": "^vehicle\\.realtime\\..*",
+      "read": "^vehicle\\.control\\.(start_rent|end_rent|kill_vehicle)$"
     }
   ],
   "topic_permissions": [],
-  "parameters": [],
   "global_parameters": [
     {
       "name": "cluster_name",
-      "value": "vehicle-rental-cluster"
-    },
-    {
-      "name": "internal_cluster_id",
-      "value": "vehicle-cluster-2024"
+      "value": "rental-cluster"
     }
   ],
   "policies": [
@@ -85,20 +68,7 @@
         "max-length": 100000,
         "overflow": "reject-publish"
       },
-      "priority": 2
-    },
-    {
-      "vhost": "/",
-      "name": "realtime-policy",
-      "pattern": "vehicle\\.realtime\\..*",
-      "apply-to": "queues",
-      "definition": {
-        "message-ttl": 3600000,
-        "max-length": 200000,
-        "overflow": "drop-head",
-        "expires": 7200000
-      },
-      "priority": 3
+      "priority": 1
     },
     {
       "vhost": "/",
@@ -114,7 +84,7 @@
   ],
   "queues": [
     {
-      "name": "vehicle.control.start_rental",
+      "name": "vehicle.control.start_rent",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
@@ -122,56 +92,29 @@
         "x-message-ttl": 3600000,
         "x-max-length": 10000,
         "x-queue-type": "classic",
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Commands to start vehicle rental sessions"
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
-      "name": "vehicle.control.end_rental",
+      "name": "vehicle.control.end_rent",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
       "arguments": {
         "x-message-ttl": 3600000,
         "x-max-length": 10000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Commands to end vehicle rental sessions"
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
-      "name": "vehicle.control.kill_engine",
+      "name": "vehicle.control.kill_vehicle",
       "vhost": "/",
       "durable": true,
       "auto_delete": false,
       "arguments": {
-        "x-message-ttl": 1800000,
+        "x-message-ttl": 3600000,
         "x-max-length": 5000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Emergency engine kill commands"
-      }
-    },
-    {
-      "name": "vehicle.control.unlock",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-message-ttl": 1800000,
-        "x-max-length": 8000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Vehicle unlock commands"
-      }
-    },
-    {
-      "name": "vehicle.control.lock",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-message-ttl": 1800000,
-        "x-max-length": 8000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Vehicle lock commands"
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
@@ -181,9 +124,8 @@
       "auto_delete": false,
       "arguments": {
         "x-message-ttl": 3600000,
-        "x-max-length": 500000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Real-time GPS location data"
+        "x-max-length": 200000,
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
@@ -193,9 +135,8 @@
       "auto_delete": false,
       "arguments": {
         "x-message-ttl": 3600000,
-        "x-max-length": 100000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Vehicle and device status updates"
+        "x-max-length": 50000,
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
@@ -205,21 +146,8 @@
       "auto_delete": false,
       "arguments": {
         "x-message-ttl": 3600000,
-        "x-max-length": 80000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Battery voltage monitoring data"
-      }
-    },
-    {
-      "name": "vehicle.realtime.speed",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-message-ttl": 1800000,
-        "x-max-length": 150000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Real-time speed monitoring"
+        "x-max-length": 50000,
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
@@ -229,9 +157,8 @@
       "auto_delete": false,
       "arguments": {
         "x-message-ttl": 604800000,
-        "x-max-length": 50000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Vehicle maintenance condition reports"
+        "x-max-length": 20000,
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
@@ -241,33 +168,8 @@
       "auto_delete": false,
       "arguments": {
         "x-message-ttl": 604800000,
-        "x-max-length": 50000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Trip performance and analytics data"
-      }
-    },
-    {
-      "name": "vehicle.report.tire_condition",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-message-ttl": 604800000,
-        "x-max-length": 30000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "Front and rear tire condition monitoring"
-      }
-    },
-    {
-      "name": "vehicle.alerts",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-message-ttl": 259200000,
-        "x-max-length": 25000,
-        "x-dead-letter-exchange": "vehicle.dlx",
-        "x-queue-description": "System alerts and notifications"
+        "x-max-length": 20000,
+        "x-dead-letter-exchange": "vehicle.dlx"
       }
     },
     {
@@ -277,8 +179,7 @@
       "auto_delete": false,
       "arguments": {
         "x-message-ttl": 2592000000,
-        "x-max-length": 100000,
-        "x-queue-description": "Dead letter queue for failed messages"
+        "x-max-length": 50000
       }
     }
   ],
@@ -290,20 +191,7 @@
       "durable": true,
       "auto_delete": false,
       "internal": false,
-      "arguments": {
-        "description": "Main exchange for vehicle rental system routing"
-      }
-    },
-    {
-      "name": "vehicle.mqtt.exchange",
-      "vhost": "/",
-      "type": "topic",
-      "durable": true,
-      "auto_delete": false,
-      "internal": false,
-      "arguments": {
-        "description": "MQTT exchange for GPS device communication"
-      }
+      "arguments": {}
     },
     {
       "name": "vehicle.dlx",
@@ -312,61 +200,32 @@
       "durable": true,
       "auto_delete": false,
       "internal": false,
-      "arguments": {
-        "description": "Dead letter exchange for failed message handling"
-      }
-    },
-    {
-      "name": "vehicle.alerts.exchange",
-      "vhost": "/",
-      "type": "topic",
-      "durable": true,
-      "auto_delete": false,
-      "internal": false,
-      "arguments": {
-        "description": "Exchange for system alerts and notifications"
-      }
+      "arguments": {}
     }
   ],
   "bindings": [
     {
       "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "vehicle.control.start_rental",
+      "destination": "vehicle.control.start_rent",
       "destination_type": "queue",
-      "routing_key": "control.start_rental.#",
+      "routing_key": "control.start_rent.#",
       "arguments": {}
     },
     {
       "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "vehicle.control.end_rental",
+      "destination": "vehicle.control.end_rent",
       "destination_type": "queue",
-      "routing_key": "control.end_rental.#",
+      "routing_key": "control.end_rent.#",
       "arguments": {}
     },
     {
       "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "vehicle.control.kill_engine",
+      "destination": "vehicle.control.kill_vehicle",
       "destination_type": "queue",
-      "routing_key": "control.kill_engine.#",
-      "arguments": {}
-    },
-    {
-      "source": "vehicle.exchange",
-      "vhost": "/",
-      "destination": "vehicle.control.unlock",
-      "destination_type": "queue",
-      "routing_key": "control.unlock.#",
-      "arguments": {}
-    },
-    {
-      "source": "vehicle.exchange",
-      "vhost": "/",
-      "destination": "vehicle.control.lock",
-      "destination_type": "queue",
-      "routing_key": "control.lock.#",
+      "routing_key": "control.kill_vehicle.#",
       "arguments": {}
     },
     {
@@ -396,14 +255,6 @@
     {
       "source": "vehicle.exchange",
       "vhost": "/",
-      "destination": "vehicle.realtime.speed",
-      "destination_type": "queue",
-      "routing_key": "realtime.speed.#",
-      "arguments": {}
-    },
-    {
-      "source": "vehicle.exchange",
-      "vhost": "/",
       "destination": "vehicle.report.maintenance",
       "destination_type": "queue",
       "routing_key": "report.maintenance.#",
@@ -415,22 +266,6 @@
       "destination": "vehicle.report.performance",
       "destination_type": "queue",
       "routing_key": "report.performance.#",
-      "arguments": {}
-    },
-    {
-      "source": "vehicle.exchange",
-      "vhost": "/",
-      "destination": "vehicle.report.tire_condition",
-      "destination_type": "queue",
-      "routing_key": "report.tire_condition.#",
-      "arguments": {}
-    },
-    {
-      "source": "vehicle.alerts.exchange",
-      "vhost": "/",
-      "destination": "vehicle.alerts",
-      "destination_type": "queue",
-      "routing_key": "alert.#",
       "arguments": {}
     },
     {
