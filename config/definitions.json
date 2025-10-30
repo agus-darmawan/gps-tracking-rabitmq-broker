@@ -36,15 +36,15 @@
       "user": "backend",
       "vhost": "/",
       "configure": "^$",
-      "write": "^vehicle\\.control\\..*",
-      "read": "^vehicle\\.realtime\\.(location|status|battery)$"
+      "write": "*",
+      "read": "*"
     },
     {
       "user": "vehicle",
       "vhost": "/",
       "configure": "^$",
-      "write": "^vehicle\\.realtime\\..*",
-      "read": "^vehicle\\.control\\.(start_rent|end_rent|kill_vehicle)$"
+      "write": "*",
+      "read": "*"
     }
   ],
   "topic_permissions": [],
