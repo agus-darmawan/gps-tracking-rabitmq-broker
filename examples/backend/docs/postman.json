@@ -1,0 +1,609 @@
+{
+	"info": {
+		"_postman_id": "a8c4f7e2-3d5a-4b6c-9e1f-2c8d9a7b4e3c",
+		"name": "Vehicle Tracking RabbitMQ Backend API",
+		"description": "API endpoints for Vehicle Tracking System Backend\n\nThis collection includes:\n- Health check endpoint\n- Vehicle data retrieval (location, status, battery, reports)\n- Vehicle control commands (start/end rental, kill engine)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Check API Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								""
+							]
+						},
+						"description": "Check if the backend API is running"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Vehicle Data - Single Vehicle",
+			"item": [
+				{
+					"name": "Get Vehicle Location",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/location/{{vehicle_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"location",
+								"{{vehicle_id}}"
+							]
+						},
+						"description": "Get the latest GPS location for a specific vehicle"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/location/VEHICLE_001",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"location",
+										"VEHICLE_001"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"vehicle_id\": \"VEHICLE_001\",\n    \"latitude\": -6.208934,\n    \"longitude\": 106.845678,\n    \"speed\": 45.5,\n    \"heading\": 180,\n    \"timestamp\": \"2025-10-30T10:30:00Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Vehicle Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/status/{{vehicle_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"status",
+								"{{vehicle_id}}"
+							]
+						},
+						"description": "Get the current status of a specific vehicle (locked/unlocked, active/inactive)"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/status/VEHICLE_001",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"status",
+										"VEHICLE_001"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"vehicle_id\": \"VEHICLE_001\",\n    \"is_locked\": false,\n    \"is_active\": true,\n    \"speed\": 45.5,\n    \"heading\": 180,\n    \"timestamp\": \"2025-10-30T10:30:00Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Vehicle Battery",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/battery/{{vehicle_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"battery",
+								"{{vehicle_id}}"
+							]
+						},
+						"description": "Get the current battery level and voltage for a specific vehicle"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/battery/VEHICLE_001",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"battery",
+										"VEHICLE_001"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"vehicle_id\": \"VEHICLE_001\",\n    \"battery_level\": 95.5,\n    \"voltage\": 12.6,\n    \"timestamp\": \"2025-10-30T10:30:00Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Maintenance Report",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/maintenance/{{vehicle_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"maintenance",
+								"{{vehicle_id}}"
+							]
+						},
+						"description": "Get the latest maintenance report with component health scores"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/maintenance/VEHICLE_001",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"maintenance",
+										"VEHICLE_001"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"vehicle_id\": \"VEHICLE_001\",\n    \"rental_id\": \"RENT_1730283000\",\n    \"tire_front_left\": 85,\n    \"tire_front_right\": 87,\n    \"tire_rear_left\": 82,\n    \"tire_rear_right\": 84,\n    \"brake_pads\": 75,\n    \"chain_cvt\": 90,\n    \"engine_oil\": 88,\n    \"battery\": 92,\n    \"lights\": 95,\n    \"spark_plug\": 89,\n    \"overall_score\": 86.7,\n    \"maintenance_required\": false,\n    \"timestamp\": \"2025-10-30T10:30:00Z\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get Performance Report",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/performance/{{vehicle_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"performance",
+								"{{vehicle_id}}"
+							]
+						},
+						"description": "Get the latest performance report with trip metrics"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/performance/VEHICLE_001",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"performance",
+										"VEHICLE_001"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"vehicle_id\": \"VEHICLE_001\",\n    \"rental_id\": \"RENT_1730283000\",\n    \"distance_travelled\": 25.5,\n    \"average_speed\": 35.8,\n    \"max_speed\": 65.2,\n    \"fuel_efficiency\": 20.5,\n    \"trip_duration_minutes\": 45,\n    \"timestamp\": \"2025-10-30T10:30:00Z\"\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Vehicle Data - All Vehicles",
+			"item": [
+				{
+					"name": "Get All Vehicle Locations",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/location",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"location"
+							]
+						},
+						"description": "Get locations for all vehicles in the fleet"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Vehicle Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/status",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"status"
+							]
+						},
+						"description": "Get status for all vehicles in the fleet"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Vehicle Battery",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/battery",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"battery"
+							]
+						},
+						"description": "Get battery levels for all vehicles in the fleet"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Maintenance Reports",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/maintenance",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"maintenance"
+							]
+						},
+						"description": "Get maintenance reports for all vehicles"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Performance Reports",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/performance",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"performance"
+							]
+						},
+						"description": "Get performance reports for all vehicles"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Vehicle Control Commands",
+			"item": [
+				{
+					"name": "Start Rental",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"vehicle_id\": \"{{vehicle_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/control/start_rent",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"control",
+								"start_rent"
+							]
+						},
+						"description": "Send command to start a rental session. This will:\n- Unlock the vehicle\n- Activate the engine\n- Begin tracking movement"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"vehicle_id\": \"VEHICLE_001\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/control/start_rent",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"control",
+										"start_rent"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"command\": \"start_rent\",\n    \"vehicle_id\": \"VEHICLE_001\"\n}"
+						}
+					]
+				},
+				{
+					"name": "End Rental",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"vehicle_id\": \"{{vehicle_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/control/end_rent",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"control",
+								"end_rent"
+							]
+						},
+						"description": "Send command to end a rental session. This will:\n- Lock the vehicle\n- Deactivate the engine\n- Trigger final maintenance and performance reports"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"vehicle_id\": \"VEHICLE_001\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/control/end_rent",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"control",
+										"end_rent"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"command\": \"end_rent\",\n    \"vehicle_id\": \"VEHICLE_001\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Kill Engine (Emergency)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"vehicle_id\": \"{{vehicle_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/control/kill_vehicle",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"control",
+								"kill_vehicle"
+							]
+						},
+						"description": "Emergency command to immediately disable the vehicle. This will:\n- Lock the vehicle immediately\n- Force engine shutdown\n- Stop all vehicle movement\n\n⚠️ Use only in emergency situations!"
+					},
+					"response": [
+						{
+							"name": "Success Response",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"vehicle_id\": \"VEHICLE_001\"\n}"
+								},
+								"url": {
+									"raw": "{{base_url}}/api/control/kill_vehicle",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"control",
+										"kill_vehicle"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"success\": true,\n    \"command\": \"kill_vehicle\",\n    \"vehicle_id\": \"VEHICLE_001\"\n}"
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3001",
+			"type": "string"
+		},
+		{
+			"key": "vehicle_id",
+			"value": "VEHICLE_001",
+			"type": "string"
+		}
+	]
+}

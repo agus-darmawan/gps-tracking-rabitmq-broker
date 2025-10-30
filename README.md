@@ -1,266 +1,118 @@
-# Vehicle Rental RabbitMQ Broker
+# Vehicle Tracking RabbitMQ Broker
 
-A high-performance RabbitMQ message broker for vehicle rental systems, enabling real-time communication between backend servers and GPS tracking devices. Designed for scalable vehicle tracking, control commands, and maintenance reporting.
+A lightweight RabbitMQ message broker for vehicle rental systems with real-time GPS tracking and vehicle control.
 
-## 🏗️ Project Structure
-
-```
-vehicle-rental-rabbitmq/
-├── docker-compose.yml           # Docker Compose configuration
-├── .env.example                 # Environment template
-├── setup.sh                     # Management script
-├── config/
-│   ├── rabbitmq.conf           # RabbitMQ configuration
-│   └── definitions.json        # Pre-configured queues & exchanges
-├── examples/
-│   ├── backend-consumer.ts     # TypeScript backend consumer
-│   ├── vehicle-publisher.ts    # Vehicle data publisher example
-│   └── package.json            # Node.js dependencies
-├── .github/
-│   └── workflows/
-│       └── deploy.yml          # CI/CD pipeline
-├── scripts/
-│   ├── health-check.sh         # Health monitoring
-│   └── backup.sh               # Backup utilities
-└── README.md                   # This file
-```
-
-## 🚀 Quick Start
-
-### 1. Environment Setup
+## Quick Start
 
 ```bash
-# Clone and setup
-git clone <your-repo>
-cd vehicle-rental-rabbitmq
-
-# Copy environment template
+# 1. Setup environment
 cp .env.example .env
 
-# Edit configuration
-nano .env
-```
-
-### 2. Start the Broker
-
-```bash
-# Make script executable
+# 2. Start broker
 chmod +x setup.sh
-
-# Start broker
 ./setup.sh start
 
-# Or using Docker directly
-docker-compose up -d
+# 3. Access management UI
+# http://localhost:15672
+# Username: admin
+# Password: admin123
 ```
 
-### 3. Access Management Interface
+## Architecture
 
-Open [http://localhost:15672](http://localhost:15672)
+```
+┌─────────────┐         ┌─────────────┐         ┌─────────────┐
+│   Device    │ ──pub──>│  RabbitMQ   │ ──sub──>│   Backend   │
+│  (Python)   │         │   Broker    │         │    (TS)     │
+└─────────────┘         └─────────────┘         └─────────────┘
+       │                       │                       │
+       └───────────────sub─────┘                       │
+                               └──────────pub──────────┘
+```
 
-**Default credentials:**
-- Username: `admin`
-- Password: `admin123`
+## Message Queues
 
-### 4. Run Examples
+### Control Commands (Backend → Device)
+- `vehicle.control.start_rent` - Start rental session
+- `vehicle.control.end_rent` - End rental session  
+- `vehicle.control.kill_vehicle` - Emergency engine disable
 
+### Real-time Data (Device → Backend)
+- `vehicle.realtime.location` - GPS coordinates
+- `vehicle.realtime.status` - Vehicle status
+- `vehicle.realtime.battery` - Battery level
+
+### Reports (Device → Backend)
+- `vehicle.report.maintenance` - Component health scores
+- `vehicle.report.performance` - Trip performance metrics
+
+## Users & Credentials
+
+| User | Password | Purpose |
+|------|----------|---------|
+| admin | admin123 | Management |
+| vehicle | vehicle123 | GPS Devices |
+| backend | backend123 | Backend Services |
+
+## Running the Examples
+
+### 1. Start RabbitMQ Broker
 ```bash
-cd examples
+./setup.sh start
+```
+
+### 2. Start Backend Server
+```bash
+cd examples/backend
 npm install
-
-# Backend consumer
-npm run dev:consumer
-
-# Vehicle data publisher
-npm run dev:publisher
+npm run dev
+# Server runs on http://localhost:3001
 ```
 
-## 🔧 Configuration
-
-### Environment Variables (.env)
-
+### 3. Simulate Device (Python)
 ```bash
-# RabbitMQ Authentication
+cd examples/device
+pip install -r requirements.txt
+python publisher.py VEHICLE_001
+```
+
+### 4. Test with Postman
+Import `postman_collection.json` and test the API endpoints.
+
+## API Endpoints
+
+### Get Vehicle Data
+```bash
+GET /api/location/VEHICLE_001
+GET /api/status/VEHICLE_001
+GET /api/battery/VEHICLE_001
+GET /api/maintenance/VEHICLE_001
+```
+
+### Send Control Commands
+```bash
+POST /api/control/start_rent
+Body: {"vehicle_id": "VEHICLE_001"}
+
+POST /api/control/end_rent
+Body: {"vehicle_id": "VEHICLE_001"}
+
+POST /api/control/kill_vehicle
+Body: {"vehicle_id": "VEHICLE_001"}
+```
+
+## Configuration
+
+Edit `.env` file:
+```bash
 RABBITMQ_DEFAULT_USER=admin
 RABBITMQ_DEFAULT_PASS=admin123
-RABBITMQ_DEFAULT_VHOST=/
-
-# Port Configuration
 RABBITMQ_AMQP_PORT=5672
 RABBITMQ_MANAGEMENT_PORT=15672
 RABBITMQ_MQTT_PORT=1883
-
 ```
 
-## 📦 Message Queues & Routing
-
-### Control Commands (Backend → Vehicle)
-| Queue | Purpose | Routing Key Pattern |
-|-------|---------|-------------------|
-| `vehicle.control.start_rental` | Start rental session | `control.start_rental.{vehicle_id}` |
-| `vehicle.control.end_rental` | End rental session | `control.end_rental.{vehicle_id}` |
-| `vehicle.control.kill_engine` | Emergency engine disable | `control.kill_engine.{vehicle_id}` |
-| `vehicle.control.unlock` | Unlock vehicle | `control.unlock.{vehicle_id}` |
-| `vehicle.control.lock` | Lock vehicle | `control.lock.{vehicle_id}` |
-
-### Real-time Data (Vehicle → Backend)
-| Queue | Purpose | Routing Key Pattern |
-|-------|---------|-------------------|
-| `vehicle.realtime.location` | GPS coordinates | `realtime.location.{vehicle_id}` |
-| `vehicle.realtime.status` | Engine & device status | `realtime.status.{vehicle_id}` |
-| `vehicle.realtime.battery` | Battery levels | `realtime.battery.{vehicle_id}` |
-| `vehicle.realtime.speed` | Current speed | `realtime.speed.{vehicle_id}` |
-
-### Maintenance Reports (Vehicle → Backend)
-| Queue | Purpose | Routing Key Pattern |
-|-------|---------|-------------------|
-| `vehicle.report.maintenance` | Component condition scores | `report.maintenance.{vehicle_id}` |
-| `vehicle.report.performance` | Trip performance metrics | `report.performance.{vehicle_id}` |
-| `vehicle.report.tire_condition` | Front & rear tire status | `report.tire_condition.{vehicle_id}` |
-
-### System Queues
-| Queue | Purpose |
-|-------|---------|
-| `vehicle.dlq` | Dead letter queue for failed messages |
-| `vehicle.alerts` | System alerts and notifications |
-
-## 🔑 User Roles & Permissions
-
-### Administrator (`admin`)
-- **Password:** `admin123`
-- **Permissions:** Full access to all resources
-- **Usage:** System management and monitoring
-
-### GPS Device (`vehicle`)
-- **Password:** `vehicle123`
-- **Permissions:** 
-  - **Publish:** realtime data, maintenance reports
-  - **Subscribe:** control commands
-- **Usage:** GPS tracking devices
-
-### Backend Service (`backend`)
-- **Password:** `backend123`
-- **Permissions:**
-  - **Publish:** control commands
-  - **Subscribe:** realtime data, reports
-- **Usage:** Backend APIs and services
-
-## 💻 Code Examples
-
-### Backend Consumer (TypeScript)
-
-```typescript
-import { VehicleDataConsumer } from './examples/backend-consumer'
-
-const consumer = new VehicleDataConsumer({
-  url: 'amqp://backend_service:backend_secure_2024@localhost:5672',
-  prefetch: 10
-})
-
-await consumer.connect()
-await consumer.startConsuming()
-```
-
-### Publish Control Command
-
-```typescript
-import { VehicleController } from './examples/vehicle-controller'
-
-const controller = new VehicleController()
-await controller.connect()
-
-// Start rental
-await controller.startRental('VEHICLE_001', {
-  rental_id: 'RENT_12345',
-  user_id: 'USER_789',
-  duration_minutes: 60
-})
-
-// Kill engine in emergency
-await controller.killEngine('VEHICLE_001', {
-  reason: 'emergency_stop',
-  operator_id: 'ADMIN_001'
-})
-```
-
-### Vehicle Data Publisher
-
-```typescript
-import { VehicleDataPublisher } from './examples/vehicle-publisher'
-
-const publisher = new VehicleDataPublisher('VEHICLE_001')
-await publisher.connect()
-
-// Send location update
-await publisher.publishLocation({
-  latitude: -6.2088,
-  longitude: 106.8456,
-  speed: 45.5,
-  heading: 180
-})
-
-// Send maintenance report
-await publisher.publishMaintenanceReport({
-  rental_id: 'RENT_12345',
-  tire_front_left: 85,
-  tire_front_right: 87,
-  tire_rear_left: 82,
-  tire_rear_right: 84,
-  brake_pads: 75,
-  chain_cvt: 90,
-  engine_oil: 88,
-  battery: 92,
-  lights: 95,
-  spark_plug: 89
-})
-```
-
-## 🏭 Data Models
-
-### Maintenance Report Schema
-```typescript
-interface MaintenanceReport {
-  vehicle_id: string
-  rental_id: string
-  timestamp: string
-  
-  // Tire condition (0-100 score)
-  tire_front_left: number
-  tire_front_right: number
-  tire_rear_left: number
-  tire_rear_right: number
-  
-  // Component scores (0-100)
-  brake_pads: number
-  chain_cvt: number
-  engine_oil: number
-  battery: number
-  lights: number
-  spark_plug: number
-  
-  // Overall scores
-  overall_score: number
-  maintenance_required: boolean
-}
-```
-
-### Location Data Schema
-```typescript
-interface LocationData {
-  vehicle_id: string
-  timestamp: string
-  latitude: number
-  longitude: number
-  speed: number        // km/h
-  heading: number      // degrees
-  altitude?: number    // meters
-  accuracy?: number    // meters
-}
-```
-
-## 🛠️ Management Commands
-
-### Using Setup Script
+## Management Commands
 
 ```bash
 ./setup.sh start      # Start broker
@@ -268,139 +120,48 @@ interface LocationData {
 ./setup.sh restart    # Restart broker
 ./setup.sh logs       # View logs
 ./setup.sh status     # Check status
-./setup.sh backup     # Backup configuration
-./setup.sh health     # Health check
 ```
 
-### Direct Docker Commands
+## Monitoring
 
+### Queue Status
 ```bash
-# View real-time logs
-docker-compose logs -f
-
-# Execute RabbitMQ commands
-docker exec vehicle-rabbitmq rabbitmqctl list_queues
-docker exec vehicle-rabbitmq rabbitmqctl list_connections
-docker exec vehicle-rabbitmq rabbitmqctl list_consumers
-
-# Performance monitoring
-docker exec vehicle-rabbitmq rabbitmqctl status
+docker exec tracking-rabbitmq-broker rabbitmqctl list_queues
 ```
 
-## 📊 Monitoring & Health Checks
-
-### Queue Metrics
+### Active Connections
 ```bash
-# Queue statistics
-docker exec vehicle-rabbitmq rabbitmqctl list_queues name messages consumers
-
-# Message rates
-docker exec vehicle-rabbitmq rabbitmqctl list_queues name message_stats.publish_details.rate
-
-# Connection status
-docker exec vehicle-rabbitmq rabbitmqctl list_connections name peer_host state
+docker exec tracking-rabbitmq-broker rabbitmqctl list_connections
 ```
 
-### Health Monitoring Script
+### Health Check
 ```bash
-# Run health check
-./scripts/health-check.sh
-
-# Expected output:
-# ✅ RabbitMQ is running
-# ✅ All queues are responding
-# ✅ Memory usage: 45%
-# ✅ Disk space: 78% available
+curl http://localhost:15672/api/health/checks/alarms
 ```
 
-## 🚀 Deployment & CI/CD
+## Troubleshooting
 
-### VPS Deployment
-
-The project includes GitHub Actions workflow for automatic deployment to VPS:
-
-1. **Push to main branch** → Triggers CI/CD
-2. **Build & Test** → Validates configuration
-3. **Deploy to VPS** → Updates production environment
-4. **Health Check** → Verifies deployment success
-
-### Environment Setup for VPS
-
-```bash
-# Production environment
-cp .env.example .env.production
-
-# Update for production
-RABBITMQ_DEFAULT_USER=admin
-RABBITMQ_DEFAULT_PASS=YOUR_SECURE_PASSWORD
-RABBITMQ_MEMORY_LIMIT=0.8
-RABBITMQ_LOG_LEVEL=warning
-```
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**Broker won't start**
+**Broker won't start:**
 ```bash
 # Check logs
-docker-compose logs vehicle-rabbitmq
+docker-compose logs tracking-rabbitmq
 
 # Check port conflicts
-netstat -tulpn | grep :5672
+netstat -tulpn | grep 5672
 ```
 
-**High memory usage**
+**Connection refused:**
 ```bash
-# Adjust memory limit in config/rabbitmq.conf
-vm_memory_high_watermark.relative = 0.4
+# Verify broker is running
+docker ps | grep tracking-rabbitmq
 
-# Restart broker
-./setup.sh restart
+# Test connection
+./setup.sh test
 ```
 
-**Messages not being consumed**
-```bash
-# Check consumer connections
-docker exec vehicle-rabbitmq rabbitmqctl list_consumers
+## Tech Stack
 
-# Check dead letter queue
-docker exec vehicle-rabbitmq rabbitmqctl list_queues | grep dlq
-```
-
-## 📈 Performance Optimization
-
-### High Throughput Configuration
-
-For production environments handling high message volumes:
-
-```conf
-# config/rabbitmq.conf
-channel_max = 2047
-frame_max = 131072
-heartbeat = 60
-vm_memory_high_watermark.relative = 0.8
-collect_statistics_interval = 10000
-```
-
-### Consumer Optimization
-
-```typescript
-// Set appropriate prefetch for consumers
-await channel.prefetch(50)
-
-// Use multiple consumer instances
-const consumerCount = 4
-for (let i = 0; i < consumerCount; i++) {
-  const consumer = new VehicleDataConsumer()
-  await consumer.connect()
-  await consumer.startConsuming()
-}
-```
-
-## 📚 Documentation Links
-
-- [RabbitMQ Official Documentation](https://www.rabbitmq.com/documentation.html)
-- [AMQP 0-9-1 Protocol](https://www.amqp.org/)
-- [Docker Compose Reference](https://docs.docker.com/compose/)
-- [TypeScript amqplib Guide](https://www.npmjs.com/package/amqplib)
+- **Broker:** RabbitMQ 3.12
+- **Backend:** Node.js + Express + TypeScript
+- **Device Simulator:** Python 3.x
+- **Protocol:** AMQP 0-9-1
