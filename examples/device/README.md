@@ -32,7 +32,7 @@ python publisher.py VEHICLE_001
 
 ### Remote Server
 ```bash
-python publisher.py VEHICLE_001 amqp://vehicle:vehicle123@103.175.219.138:5672
+python3 publisher.py DK1142EMR B4793OE D9169YR L6864EZZ F4074YK DK7069DC amqp://vehicle:vehicle123@103.175.219.138:5672
 ```
 
 ### Simulate Multiple Vehicles
@@ -84,16 +84,11 @@ python publisher.py VEHICLE_003
 ```json
 {
   "vehicle_id": "VEHICLE_001",
-  "rental_id": "RENT_1730283000",
-  "tire_front_left": 85,
-  "tire_front_right": 87,
-  "tire_rear_left": 82,
-  "tire_rear_right": 84,
-  "brake_pads": 75,
+  "front_tire": 85,
+  "rear_tire": 82,
   "chain_cvt": 90,
   "engine_oil": 88,
   "battery": 92,
-  "lights": 95,
   "spark_plug": 89,
   "overall_score": 86.7,
   "maintenance_required": false,
