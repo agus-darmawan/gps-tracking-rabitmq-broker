@@ -32,7 +32,7 @@ python publisher.py VEHICLE_001
 
 ### Remote Server
 ```bash
-python3 publisher.py DK1142EMR B4793OE D9169YR L6864EZZ F4074YK DK7069DC amqp://vehicle:vehicle123@103.175.219.138:5672
+python3 publisher.py DK1142EMR  amqp://vehicle:vehicle123@103.175.219.138:5672
 ```
 
 ### Simulate Multiple Vehicles
