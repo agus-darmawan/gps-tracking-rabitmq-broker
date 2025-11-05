@@ -105,9 +105,16 @@ class VehicleDevice:
         self.publish(f"realtime.battery.{self.vehicle_id}", msg)
         print(f"🔋 [{self.vehicle_id}] Battery: {msg['device_battery_level']}% ({msg['vehicle_voltage']}V)")
 
-    def publish_maintenance_report(self):
+    def publish_vehicle_report(self):
+        """Combined performance + maintenance report"""
         msg = {
             "vehicle_id": self.vehicle_id,
+            # Performance
+            "distance_travelled": round(random.uniform(5, 50), 2),
+            "average_speed": round(random.uniform(25, 45), 2),
+            "max_speed": round(random.uniform(50, 80), 2),
+
+            # Maintenance
             "weight_score": random.choice(["ringan", "sedang", "berat"]),
             "front_tire": random.randint(2000, 10000),
             "rear_tire": random.randint(2000, 10000),
@@ -115,21 +122,11 @@ class VehicleDevice:
             "engine_oil": random.randint(2000, 10000),
             "chain_or_cvt": random.randint(2000, 10000),
             "engine": random.randint(2000, 10000),
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-        }
-        self.publish(f"report.maintenance.{self.vehicle_id}", msg)
-        print(f"🧰 [{self.vehicle_id}] Maintenance report sent")
 
-    def publish_performance_report(self):
-        msg = {
-            "vehicle_id": self.vehicle_id,
-            "distance_travelled": round(random.uniform(5, 50), 2),
-            "average_speed": round(random.uniform(25, 45), 2),
-            "max_speed": round(random.uniform(50, 80), 2),
             "timestamp": datetime.utcnow().isoformat() + "Z",
         }
-        self.publish(f"report.performance.{self.vehicle_id}", msg)
-        print(f"📊 [{self.vehicle_id}] Performance report sent")
+        self.publish(f"vehicle.report.performance.{self.vehicle_id}", msg)
+        print(f"📊 [{self.vehicle_id}] Vehicle report sent (performance + maintenance)")
 
     # ======================================
     # Command Handling
@@ -149,12 +146,10 @@ class VehicleDevice:
             elif command == "end_rent":
                 self.is_active = False
                 self.is_locked = True
-                self.publish_maintenance_report()
-                self.publish_performance_report()
+                self.publish_vehicle_report()
                 print(f"✅ [{self.vehicle_id}] Rent ended")
 
             elif command == "kill_vehicle":
-                # schedule kill instead of immediate
                 self.kill_scheduled = True
                 print(f"⚠️ [{self.vehicle_id}] Kill scheduled (waiting speed < 10)...")
 
@@ -194,7 +189,6 @@ class VehicleDevice:
                 if cycle % 2 == 0:
                     self.publish_battery()
 
-                # check if kill scheduled
                 if self.kill_scheduled and self.speed < 10:
                     self.is_active = False
                     self.is_locked = True
@@ -225,7 +219,6 @@ def main():
         sys.exit(1)
 
     *vehicle_ids, last_arg = sys.argv[1:]
-    # detect if last arg is URL
     if last_arg.startswith("amqp://"):
         rabbitmq_url = last_arg
         vehicle_ids = vehicle_ids[:-1]

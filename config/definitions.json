@@ -151,17 +151,6 @@
       }
     },
     {
-      "name": "vehicle.report.maintenance",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {
-        "x-message-ttl": 604800000,
-        "x-max-length": 20000,
-        "x-dead-letter-exchange": "vehicle.dlx"
-      }
-    },
-    {
       "name": "vehicle.report.performance",
       "vhost": "/",
       "durable": true,
@@ -250,22 +239,6 @@
       "destination": "vehicle.realtime.battery",
       "destination_type": "queue",
       "routing_key": "realtime.battery.#",
-      "arguments": {}
-    },
-    {
-      "source": "vehicle.exchange",
-      "vhost": "/",
-      "destination": "vehicle.report.maintenance",
-      "destination_type": "queue",
-      "routing_key": "report.maintenance.#",
-      "arguments": {}
-    },
-    {
-      "source": "vehicle.exchange",
-      "vhost": "/",
-      "destination": "vehicle.report.performance",
-      "destination_type": "queue",
-      "routing_key": "report.performance.#",
       "arguments": {}
     },
     {
