@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Vehicle GPS Device Simulator (Single Vehicle)
-- Simulates location, status, and battery updates.
+Vehicle GPS Device Simulator (Multiple Vehicles)
+- Simulates location, status, and battery updates for multiple vehicles.
 - Handles commands: start_rent, end_rent, kill_vehicle.
 - Stores and reuses ORDER_ID between start/end rent.
+- Supports running multiple vehicles concurrently.
 """
 
 import pika
@@ -11,6 +12,7 @@ import json
 import time
 import random
 import sys
+import threading
 from datetime import datetime, UTC
 
 
@@ -44,10 +46,10 @@ class VehicleDevice:
             params = pika.URLParameters(self.rabbitmq_url)
             self.connection = pika.BlockingConnection(params)
             self.channel = self.connection.channel()
-            print(f"✅ Connected to RabbitMQ as {self.vehicle_id}")
+            print(f"[{self.vehicle_id}] ✅ Connected to RabbitMQ")
         except Exception as e:
-            print(f"❌ Connection error: {e}")
-            sys.exit(1)
+            print(f"[{self.vehicle_id}] ❌ Connection error: {e}")
+            raise
 
     # ======================================
     # Utility
@@ -82,7 +84,7 @@ class VehicleDevice:
             "timestamp": self.utc_now(),
         }
         self.publish(f"realtime.location.{self.vehicle_id}", msg)
-        print(f"📍 Location: ({msg['latitude']}, {msg['longitude']})")
+        print(f"[{self.vehicle_id}] 📍 Location: ({msg['latitude']}, {msg['longitude']})")
 
     def publish_status(self):
         msg = {
@@ -93,7 +95,7 @@ class VehicleDevice:
             "timestamp": self.utc_now(),
         }
         self.publish(f"realtime.status.{self.vehicle_id}", msg)
-        print(f"🔒 Status: Active={self.is_active}, Locked={self.is_locked}")
+        print(f"[{self.vehicle_id}] 🔒 Status: Active={self.is_active}, Locked={self.is_locked}")
 
     def publish_battery(self):
         if self.is_active:
@@ -107,7 +109,7 @@ class VehicleDevice:
             "timestamp": self.utc_now(),
         }
         self.publish(f"realtime.battery.{self.vehicle_id}", msg)
-        print(f"🔋 Battery: {msg['device_battery_level']}% ({msg['device_voltage']}V)")
+        print(f"[{self.vehicle_id}] 🔋 Battery: {msg['device_battery_level']}% ({msg['device_voltage']}V)")
 
     def publish_performance_report(self):
         msg = {
@@ -126,7 +128,20 @@ class VehicleDevice:
             "timestamp": self.utc_now(),
         }
         self.publish(f"report.performance.{self.vehicle_id}", msg)
-        print(f"📊 Performance report sent (order_id: {self.order_id})")
+        print(f"[{self.vehicle_id}] 📊 Performance report sent (order_id: {self.order_id})")
+
+    def publish_registration(self):
+        """Publish vehicle registration (same pattern as status)."""
+        msg = {
+            "vehicle_id": self.vehicle_id,
+        }
+        try:
+            self.publish("registration.new", msg)
+            print(f"[{self.vehicle_id}] 📝 Registration sent")
+        except Exception as e:
+            print(f"[{self.vehicle_id}] ❌ Failed to send registration: {e}")
+            import traceback
+            traceback.print_exc()
 
     # ======================================
     # Command Handling
@@ -134,7 +149,7 @@ class VehicleDevice:
     def handle_command(self, ch, method, props, body):
         try:
             command = method.routing_key.split(".")[1]
-            print(f"\n🎛️ Received command: {command}")
+            print(f"\n[{self.vehicle_id}] 🎛️ Received command: {command}")
 
             try:
                 data = json.loads(body)
@@ -147,23 +162,23 @@ class VehicleDevice:
                 self.kill_scheduled = False
                 self.speed = random.uniform(20, 40)
                 self.order_id = data.get("order_id") or f"ORD-{self.vehicle_id}-{int(time.time())}"
-                print(f"✅ Rent started (order_id: {self.order_id})")
+                print(f"[{self.vehicle_id}] ✅ Rent started (order_id: {self.order_id})")
 
             elif command == "end_rent":
                 self.is_active = False
                 self.is_locked = True
                 self.publish_performance_report()
-                print(f"✅ Rent ended (order_id: {self.order_id})")
+                print(f"[{self.vehicle_id}] ✅ Rent ended (order_id: {self.order_id})")
                 self.order_id = None
 
             elif command == "kill_vehicle":
                 self.kill_scheduled = True
-                print(f"⚠️ Kill scheduled (waiting speed < 10)...")
+                print(f"[{self.vehicle_id}] ⚠️ Kill scheduled (waiting speed < 10)...")
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         except Exception as e:
-            print(f"❌ Command error: {e}")
+            print(f"[{self.vehicle_id}] ❌ Command error: {e}")
             ch.basic_nack(delivery_tag=method.delivery_tag)
 
     def start_listening_commands(self):
@@ -176,17 +191,18 @@ class VehicleDevice:
                 self.channel.queue_bind(exchange=self.exchange, queue=q_name, routing_key=rk)
                 self.channel.basic_consume(queue=q_name, on_message_callback=self.handle_command, auto_ack=False)
             except Exception as e:
-                print(f"⚠️ Cannot bind queue {q_name}: {e}")
-        print(f"👂 Listening for control commands...")
+                print(f"[{self.vehicle_id}] ⚠️ Cannot bind queue {q_name}: {e}")
+        print(f"[{self.vehicle_id}] 👂 Listening for control commands...")
 
     # ======================================
     # Main Loop
     # ======================================
     def loop(self):
         self.connect()
+        self.publish_registration()  # Send registration when vehicle starts
         self.start_listening_commands()
 
-        print(f"\n🚗 Vehicle Simulator started for {self.vehicle_id}\n")
+        print(f"[{self.vehicle_id}] 🚗 Vehicle Simulator started\n")
         cycle = 0
 
         while True:
@@ -201,39 +217,88 @@ class VehicleDevice:
                     self.is_active = False
                     self.is_locked = True
                     self.kill_scheduled = False
-                    print(f"💀 Kill executed (speed < 10)")
+                    print(f"[{self.vehicle_id}] 💀 Kill executed (speed < 10)")
 
                 cycle += 1
                 time.sleep(5)
 
             except KeyboardInterrupt:
-                print("\n⏹️ Stopping...")
+                print(f"\n[{self.vehicle_id}] ⏹️ Stopping...")
                 break
             except Exception as e:
-                print(f"❌ Loop error: {e}")
+                print(f"[{self.vehicle_id}] ❌ Loop error: {e}")
                 break
 
         if self.connection and not self.connection.is_closed:
             self.connection.close()
-        print("👋 Disconnected")
+        print(f"[{self.vehicle_id}] 👋 Disconnected")
 
 
 # ======================================
 # Entry Point
 # ======================================
+def run_vehicle(vehicle_id: str, rabbitmq_url: str):
+    """Run a single vehicle device in a thread."""
+    try:
+        device = VehicleDevice(vehicle_id, rabbitmq_url)
+        device.loop()
+    except Exception as e:
+        print(f"[{vehicle_id}] ❌ Fatal error: {e}")
+
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python publisher.py <VEHICLE_ID> [RABBITMQ_URL]")
+        print("Usage: python publisher.py <VEHICLE_ID1,VEHICLE_ID2,...> [RABBITMQ_URL]")
+        print("   or: python publisher.py <VEHICLE_ID1> <VEHICLE_ID2> ... [RABBITMQ_URL]")
+        print("\nExamples:")
+        print("  python publisher.py B1234ABC")
+        print("  python publisher.py B1234ABC B5678XYZ")
+        print("  python publisher.py B1234ABC,B5678XYZ,C9999DEF")
         sys.exit(1)
 
-    vehicle_id = sys.argv[1]
-    rabbitmq_url = (
-        sys.argv[2] if len(sys.argv) > 2 and sys.argv[2].startswith("amqp://")
-        else "amqp://vehicle:vehicle123@103.175.219.138:5672"
-    )
+    # Parse vehicle IDs (support comma-separated or space-separated)
+    vehicle_ids_input = sys.argv[1]
+    if "," in vehicle_ids_input:
+        vehicle_ids = [vid.strip() for vid in vehicle_ids_input.split(",") if vid.strip()]
+    else:
+        # Check if there are multiple space-separated vehicle IDs
+        vehicle_ids = [vid for vid in sys.argv[1:] if not vid.startswith("amqp://")]
+    
+    if not vehicle_ids:
+        print("❌ No valid vehicle IDs provided")
+        sys.exit(1)
 
-    device = VehicleDevice(vehicle_id, rabbitmq_url)
-    device.loop()
+    # Parse RabbitMQ URL (last argument if it starts with amqp://)
+    rabbitmq_url = "amqp://vehicle:vehicle123@103.175.219.138:5672"
+    for arg in sys.argv[1:]:
+        if arg.startswith("amqp://"):
+            rabbitmq_url = arg
+            break
+
+    print(f"🚀 Starting {len(vehicle_ids)} vehicle simulator(s)...")
+    print(f"   Vehicles: {', '.join(vehicle_ids)}")
+    print(f"   RabbitMQ: {rabbitmq_url}\n")
+
+    # Create and start threads for each vehicle
+    threads = []
+    for vehicle_id in vehicle_ids:
+        thread = threading.Thread(
+            target=run_vehicle,
+            args=(vehicle_id, rabbitmq_url),
+            daemon=False,
+            name=f"Vehicle-{vehicle_id}"
+        )
+        thread.start()
+        threads.append(thread)
+        time.sleep(0.5)  # Small delay to stagger connections
+
+    # Wait for all threads (or KeyboardInterrupt)
+    try:
+        for thread in threads:
+            thread.join()
+    except KeyboardInterrupt:
+        print("\n\n⏹️ Shutting down all vehicles...")
+        print("👋 Goodbye!")
 
 
 if __name__ == "__main__":
